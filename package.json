@@ -8,7 +8,7 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run db:generate --workspace=@drl-hub/database && npm run build --workspaces --if-present",
     "start": "node apps/api/dist/main.js",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
