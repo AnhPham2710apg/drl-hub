@@ -1,0 +1,2274 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#2563EB">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="DRL-Hub">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="https://api.iconify.design/ph:calendar-star-duotone.svg?color=%232563eb" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="https://api.iconify.design/ph:calendar-star-duotone.svg?color=%232563eb">
+  
+  <!-- Inter & Plus Jakarta Sans typography like Luma -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            luma: {
+              blue: '#2563EB',        // Luma signature primary electric blue
+              blueHover: '#1D4ED8',
+              blueLight: '#EFF6FF',
+              blueSubtle: '#DBEAFE',
+              dark: '#0F172A',
+              slate: '#334155',
+              muted: '#64748B',
+              border: '#E2E8F0',
+              bgLight: '#F8FAFC',
+              surface: '#FFFFFF',
+            }
+          },
+          boxShadow: {
+            'luma': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+            'luma-card': '0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.03)',
+            'luma-hover': '0 20px 30px -10px rgba(37, 99, 235, 0.12), 0 8px 16px -6px rgba(15, 23, 42, 0.06)',
+            'luma-active': '0 0 0 3px rgba(37, 99, 235, 0.2)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background-color: #F8FAFC;
+      color: #0F172A;
+    }
+    
+    /* Clean, thin custom scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+    .frosted-glass {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .pill-active {
+      background-color: #0F172A;
+      color: #FFFFFF;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    .pill-inactive {
+      background-color: transparent;
+      color: #64748B;
+    }
+    .pill-inactive:hover {
+      background-color: #F1F5F9;
+      color: #0F172A;
+    }
+
+    /* Luma date block badge */
+    .luma-date-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #EFF6FF;
+      border: 1px solid #DBEAFE;
+      border-radius: 12px;
+      width: 52px;
+      height: 52px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-blue-600 selection:text-white">
+
+  <!-- ==================== LUMA TOP NAVIGATION ==================== -->
+  <header class="frosted-glass sticky top-0 z-50 border-b border-slate-200/80">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      
+      <!-- Logo & Brand (Luma Style: clean minimal typography) -->
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('feed')">
+        <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/30">
+          <i class="ph-bold ph-calendar-star text-xl"></i>
+        </div>
+        <div class="flex items-center space-x-2">
+          <span class="font-extrabold text-lg text-slate-900 tracking-tight">DRL-Hub</span>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-200/60 uppercase">HCMUS</span>
+        </div>
+      </div>
+
+      <!-- Center Pill Navigation -->
+      <nav class="flex items-center bg-slate-100/80 p-1 rounded-full border border-slate-200/70 text-xs font-semibold">
+        <button onclick="switchTab('feed')" id="tabBtn-feed"
+          class="px-4 py-1.5 rounded-full transition-all duration-200 pill-active flex items-center space-x-1.5">
+          <i class="ph ph-compass text-sm"></i>
+          <span>Khám phá</span>
+        </button>
+        <button onclick="switchTab('share')" id="tabBtn-share"
+          class="px-4 py-1.5 rounded-full transition-all duration-200 pill-inactive flex items-center space-x-1.5">
+          <i class="ph ph-plus-circle text-sm"></i>
+          <span>Thêm sự kiện</span>
+        </button>
+        <button onclick="switchTab('tracker')" id="tabBtn-tracker"
+          class="px-4 py-1.5 rounded-full transition-all duration-200 pill-inactive flex items-center space-x-1.5">
+          <i class="ph ph-chart-polar text-sm"></i>
+          <span>Sổ tay & Điểm</span>
+        </button>
+      </nav>
+
+      <!-- Right Action: User Status / Quick Button / Login -->
+      <div class="flex items-center space-x-2">
+        <a href="/docs" target="_blank"
+          class="hidden sm:flex items-center space-x-1 text-xs font-medium text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-full hover:bg-slate-100 transition">
+          <span>Docs</span>
+          <i class="ph ph-arrow-up-right text-[11px]"></i>
+        </a>
+        
+        <!-- Auth Profile / Login Button -->
+        <div id="authHeaderContainer">
+          <button onclick="openAuthModal('login')" id="btnOpenAuthModal"
+            class="px-3.5 py-1.5 rounded-full border border-slate-200 hover:border-slate-300 bg-white text-slate-700 text-xs font-bold transition flex items-center space-x-1.5 shadow-xs">
+            <i class="ph-bold ph-user-circle text-base text-blue-600"></i>
+            <span>Đăng nhập</span>
+          </button>
+          
+          <div id="userProfilePill" class="hidden flex items-center space-x-2 bg-white px-2.5 py-1 rounded-full border border-slate-200 shadow-xs">
+            <div class="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black" id="userAvatarText">
+              A
+            </div>
+            <div class="text-left hidden sm:block">
+              <span id="userNameText" class="text-xs font-bold text-slate-800 block leading-tight truncate max-w-[120px]">Sinh viên</span>
+            </div>
+            <button onclick="handleLogout()" title="Đăng xuất" class="text-slate-400 hover:text-rose-600 p-0.5 rounded-full">
+              <i class="ph-bold ph-sign-out text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <button onclick="switchTab('share')"
+          class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-full text-xs font-semibold shadow-sm transition flex items-center space-x-1.5">
+          <i class="ph-bold ph-plus text-xs"></i>
+          <span class="hidden sm:inline">Tạo sự kiện</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTENT WRAPPER ==================== -->
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
+
+    <!-- ========================================================================= -->
+    <!-- TAB 1: LUMA EVENT DISCOVERY FEED (Main Home Page)                         -->
+    <!-- ========================================================================= -->
+    <div id="tabContent-feed" class="space-y-8">
+      
+      <!-- Hero / Header Section like Luma Discover -->
+      <div class="space-y-5 pb-2 border-b border-slate-200/80">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div class="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200/60 text-blue-700 text-xs font-medium mb-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+              <span>Học kỳ II • 2025 - 2026</span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Sự kiện & Hoạt động ĐRL</h1>
+            <p class="text-sm text-slate-500 mt-1">Khám phá hoạt động tích lũy Điểm Rèn Luyện tại Trường ĐH Khoa học Tự nhiên, ĐHQG-HCM</p>
+          </div>
+
+          <!-- Total Counter Badge -->
+          <div class="flex items-center space-x-2 text-xs text-slate-500">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span id="eventsCountBadge" class="font-semibold text-slate-700">Đang tải...</span>
+          </div>
+        </div>
+
+        <!-- Dedicated Search & Filter Toolbar -->
+        <div class="space-y-3 pt-2">
+          
+          <!-- Top Row: Search Input & Quick Controls -->
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <!-- Search Bar -->
+            <div class="relative flex-1">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i class="ph-bold ph-magnifying-glass text-lg"></i>
+              </div>
+              <input type="text" id="eventSearchInput" oninput="debounceApplyFilters()"
+                placeholder="Tìm kiếm sự kiện theo tên, câu lạc bộ, khoa hoặc từ khóa..."
+                class="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition shadow-luma font-medium">
+              <button onclick="clearSearchInput()" id="btnClearSearch" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                <i class="ph-bold ph-x-circle text-base"></i>
+              </button>
+            </div>
+
+            <!-- Sort By Select -->
+            <div class="flex items-center gap-2">
+              <div class="relative">
+                <select id="sortSelect" onchange="applyFilters()"
+                  class="appearance-none bg-white border border-slate-200 rounded-2xl px-3.5 py-2.5 pr-8 text-xs font-semibold text-slate-700 shadow-luma focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition cursor-pointer">
+                  <option value="newest">Mới nhất</option>
+                  <option value="points-desc">Điểm ĐRL: Cao ➔ Thấp</option>
+                  <option value="points-asc">Điểm ĐRL: Thấp ➔ Cao</option>
+                  <option value="clicks-desc">Nhiều lượt xem nhất</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+                  <i class="ph-bold ph-caret-down text-xs"></i>
+                </div>
+              </div>
+
+              <!-- Filter Popup Button (Luma Style) -->
+              <button onclick="openFilterModal()" id="btnOpenFilterModal"
+                class="px-4 py-2.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold shadow-luma transition flex items-center space-x-2 flex-shrink-0 cursor-pointer active:scale-95">
+                <i class="ph-bold ph-funnel text-sm text-blue-600"></i>
+                <span>Bộ lọc nâng cao</span>
+                <span id="activeFiltersBadge" class="hidden px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold shadow-sm">0</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Active Filters Bar (Clean Luma Style: Only active filters are displayed) -->
+          <div id="activeFilterChipsContainer" class="flex flex-wrap items-center gap-2 pt-1 text-xs">
+            <span class="text-slate-400 font-semibold text-[11px] flex items-center space-x-1">
+              <i class="ph-bold ph-funnel"></i>
+              <span>Bộ lọc đang áp dụng:</span>
+            </span>
+            <div id="activeFilterChips" class="flex flex-wrap items-center gap-1.5">
+              <span id="noFiltersChip" class="text-slate-400 italic text-[11px]">Đang hiển thị tất cả sự kiện</span>
+            </div>
+            <button onclick="openFilterModal()" class="px-2.5 py-1 rounded-full border border-dashed border-slate-300 hover:border-blue-600 hover:text-blue-600 text-slate-500 font-medium text-[11px] transition flex items-center space-x-1">
+              <i class="ph-bold ph-plus text-[10px]"></i>
+              <span>Thêm bộ lọc</span>
+            </button>
+            <button onclick="resetAllFilters()" id="btnResetAllFilters" class="hidden text-xs text-blue-600 font-bold hover:underline pl-1">
+              Xóa tất cả
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================== POPUP LAYER MODAL (LUMA FILTER MODAL) ==================== -->
+      <div id="filterModalBackdrop" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
+        <div id="filterModalCard" class="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          
+          <!-- Modal Header -->
+          <div class="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                <i class="ph-bold ph-sliders-horizontal text-lg"></i>
+              </div>
+              <div>
+                <h3 class="font-extrabold text-base text-slate-900 leading-tight">Bộ Lọc Sự Kiện ĐRL</h3>
+                <p class="text-[11px] text-slate-500">Chuẩn hóa cơ cấu tổ chức ĐH Khoa học Tự nhiên</p>
+              </div>
+            </div>
+            <button onclick="closeFilterModal()" class="w-8 h-8 rounded-full bg-slate-200/60 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+              <i class="ph-bold ph-x text-sm"></i>
+            </button>
+          </div>
+
+          <!-- Modal Scrollable Content -->
+          <div class="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+            
+            <!-- 1. Nội dung quy chế ĐRL (HCMUS 5 Clauses) - Multi-Select -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="block font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                  1. Nội dung rèn luyện (Chọn một hoặc nhiều ND)
+                </label>
+                <button type="button" onclick="selectAllClauses()" class="text-[11px] text-blue-600 font-semibold hover:underline">
+                  Chọn tất cả
+                </button>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="filterModalClausesContainer">
+                <button type="button" onclick="toggleMultiClause(1)" id="pillClause-1"
+                  class="multi-clause-pill px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-left transition flex items-center justify-between">
+                  <span>ND1: Học tập & NCKH</span>
+                  <i class="ph-bold ph-check text-xs opacity-0"></i>
+                </button>
+                <button type="button" onclick="toggleMultiClause(2)" id="pillClause-2"
+                  class="multi-clause-pill px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-left transition flex items-center justify-between">
+                  <span>ND2: Nội quy & Quy chế</span>
+                  <i class="ph-bold ph-check text-xs opacity-0"></i>
+                </button>
+                <button type="button" onclick="toggleMultiClause(3)" id="pillClause-3"
+                  class="multi-clause-pill px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-left transition flex items-center justify-between">
+                  <span>ND3: Chính trị - VH - TT</span>
+                  <i class="ph-bold ph-check text-xs opacity-0"></i>
+                </button>
+                <button type="button" onclick="toggleMultiClause(4)" id="pillClause-4"
+                  class="multi-clause-pill px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-left transition flex items-center justify-between">
+                  <span>ND4: Tình nguyện (CTXH)</span>
+                  <i class="ph-bold ph-check text-xs opacity-0"></i>
+                </button>
+                <button type="button" onclick="toggleMultiClause(5)" id="pillClause-5"
+                  class="multi-clause-pill px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-left transition flex items-center justify-between">
+                  <span>ND5: Khuyến khích</span>
+                  <i class="ph-bold ph-check text-xs opacity-0"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- 2. Cấp Tổ Chức (Hierarchy Level) & Favorites -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="block font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                  2. Cấp tổ chức hoạt động
+                </label>
+                <!-- Only Favorites Checkbox in Modal -->
+                <label class="inline-flex items-center space-x-1.5 cursor-pointer text-[11px] font-semibold text-rose-600">
+                  <input type="checkbox" id="modalCheckboxFavorites" class="rounded text-rose-600 focus:ring-rose-500 w-3.5 h-3.5">
+                  <i class="ph-fill ph-heart text-xs text-rose-500"></i>
+                  <span>Chỉ bài viết đã thích</span>
+                </label>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button type="button" onclick="toggleMultiOrgLevel('all')" id="btnOrg-all"
+                  class="org-level-btn px-3 py-2 rounded-xl border border-blue-600 bg-blue-50 font-bold text-blue-700 text-center transition">
+                  Tất cả các cấp
+                </button>
+                <button type="button" onclick="toggleMultiOrgLevel('truong')" id="btnOrg-truong"
+                  class="org-level-btn px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                  Cấp Trường / ĐHQG
+                </button>
+                <button type="button" onclick="toggleMultiOrgLevel('khoa')" id="btnOrg-khoa"
+                  class="org-level-btn px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                  Khoa / Liên chi hội
+                </button>
+                <button type="button" onclick="toggleMultiOrgLevel('clb')" id="btnOrg-clb"
+                  class="org-level-btn px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                  CLB / Đội / Nhóm
+                </button>
+              </div>
+            </div>
+
+            <!-- 3. Đơn vị tổ chức (10 Khoa HCMUS) - Multi-Select Pills -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="block font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                  3. Khoa & Liên Chi Hội (10 Khoa HCMUS - Chọn nhiều)
+                </label>
+                <div class="space-x-2">
+                  <button type="button" onclick="selectAllFaculties(true)" class="text-[11px] text-blue-600 font-semibold hover:underline">Tất cả</button>
+                  <button type="button" onclick="selectAllFaculties(false)" class="text-[11px] text-slate-400 font-semibold hover:underline">Bỏ chọn</button>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="facultyPillsContainer">
+                <button type="button" onclick="toggleFacultyPill('cntt')" id="fac-cntt" class="fac-pill px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 font-medium text-slate-700 text-left transition flex items-center justify-between">
+                  <span class="truncate">CNTT (FIT)</span>
+                  <i class="ph-bold ph-check text-[11px] opacity-0 flex-shrink-0 ml-1"></i>
+                </button>
+                <button type="button" onclick="toggleFacultyPill('toantin')" id="fac-toantin" class="fac-pill px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 font-medium text-slate-700 text-left transition flex items-center justify-between">
+                  <span class="truncate">Toán - Tin (FMT)</span>
+                  <i class="ph-bold ph-check text-[11px] opacity-0 flex-shrink-0 ml-1"></i>
+                </button>
+                <button type="button" onclick="toggleFacultyPill('vatly')" id="fac-vatly" class="fac-pill px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 font-medium text-slate-700 text-left transition flex items-center justify-between">
+                  <span class="truncate">Vật lý (Phys)</span>
+                  <i class="ph-bold ph-check text-[11px] opacity-0 flex-shrink-0 ml-1"></i>
+                </button>
+                <button type="button" onclick="toggleFacultyPill('hoahoc')" id="fac-hoahoc" class="fac-pill px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 font-medium text-slate-700 text-left transition flex items-center justify-between">
+                  <span class="truncate">Hóa học (Chem)</span>
+                  <i class="ph-bold ph-check text-[11px] opacity-0 flex-shrink-0 ml-1"></i>
+                </button>
+                <button type="button" onclick="toggleFacultyPill('sinhhoc')" id="fac-sinhhoc" class="fac-pill px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 font-medium text-slate-700 text-left transition flex items-center justify-between">
+                  <span class="truncate">Sinh học (FBB)</span>
+                  <i class="ph-bold ph-check text-[11px] opacity-0 flex-shrink-0 ml-1"></i>
+                </button>
+                <button type="button" onclick="toggleFacultyPill('moitruong')" id="fac-moitruong" class="fac-pill px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 font-medium text-slate-700 text-left transition flex items-center justify-between">
+                  <span class="truncate">Môi trường (FES)</span>
+                  <i class="ph-bold ph-check text-[11px] opacity-0 flex-shrink-0 ml-1"></i>
+                </button>
+                <button type="button" onclick="toggleFacultyPill('diachat')" id="fac-diachat" class="fac-pill px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 font-medium text-slate-700 text-left transition flex items-center justify-between">
+                  <span class="truncate">Địa chất (Geo)</span>
+                  <i class="ph-bold ph-check text-[11px] opacity-0 flex-shrink-0 ml-1"></i>
+                </button>
+                <button type="button" onclick="toggleFacultyPill('vatlieu')" id="fac-vatlieu" class="fac-pill px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 font-medium text-slate-700 text-left transition flex items-center justify-between">
+                  <span class="truncate">Vật liệu (FMS)</span>
+                  <i class="ph-bold ph-check text-[11px] opacity-0 flex-shrink-0 ml-1"></i>
+                </button>
+                <button type="button" onclick="toggleFacultyPill('dientu')" id="fac-dientu" class="fac-pill px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 font-medium text-slate-700 text-left transition flex items-center justify-between">
+                  <span class="truncate">Điện tử - VT (FETEL)</span>
+                  <i class="ph-bold ph-check text-[11px] opacity-0 flex-shrink-0 ml-1"></i>
+                </button>
+                <button type="button" onclick="toggleFacultyPill('liennganh')" id="fac-liennganh" class="fac-pill px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 font-medium text-slate-700 text-left transition flex items-center justify-between">
+                  <span class="truncate">Khoa học Liên ngành (FIS)</span>
+                  <i class="ph-bold ph-check text-[11px] opacity-0 flex-shrink-0 ml-1"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- 4. Cơ Sở Tổ Chức (Campuses) & Hình Thức (Multi-select) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block font-bold text-slate-800 uppercase tracking-wider mb-2 text-[11px]">
+                  4. Cơ sở tổ chức (Campus)
+                </label>
+                <div class="grid grid-cols-2 gap-2">
+                  <button type="button" onclick="toggleCampusPill('cs1')" id="camp-cs1" class="camp-pill px-2.5 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                    Cơ sở 1 (Q5)
+                  </button>
+                  <button type="button" onclick="toggleCampusPill('cs2')" id="camp-cs2" class="camp-pill px-2.5 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                    Cơ sở 2 (Dĩ An)
+                  </button>
+                  <button type="button" onclick="toggleCampusPill('external')" id="camp-external" class="camp-pill px-2.5 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                    Ngoài trường
+                  </button>
+                  <button type="button" onclick="toggleCampusPill('online')" id="camp-online" class="camp-pill px-2.5 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                    Trực tuyến
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-800 uppercase tracking-wider mb-2 text-[11px]">
+                  5. Hình thức sự kiện
+                </label>
+                <div class="grid grid-cols-3 gap-2">
+                  <button type="button" onclick="toggleFormatPill('offline')" id="fmt-offline" class="fmt-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                    Trực tiếp
+                  </button>
+                  <button type="button" onclick="toggleFormatPill('online')" id="fmt-online" class="fmt-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                    Online
+                  </button>
+                  <button type="button" onclick="toggleFormatPill('hybrid')" id="fmt-hybrid" class="fmt-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                    Hybrid
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 6. Mức Điểm Rèn Luyện & Vai Trò (Multi-select) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block font-bold text-slate-800 uppercase tracking-wider mb-2 text-[11px]">
+                  6. Mức điểm ĐRL trao thưởng
+                </label>
+                <div class="grid grid-cols-3 gap-2">
+                  <button type="button" onclick="togglePointsPill('3-5')" id="pts-3-5" class="pts-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                    +3đ - +5đ
+                  </button>
+                  <button type="button" onclick="togglePointsPill('7-10')" id="pts-7-10" class="pts-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                    +7đ - +10đ
+                  </button>
+                  <button type="button" onclick="togglePointsPill('15+')" id="pts-15plus" class="pts-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                    Trên +15đ
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block font-bold text-slate-800 uppercase tracking-wider mb-2 text-[11px]">
+                  7. Nhóm Câu lạc bộ & Đội nhóm
+                </label>
+                <div class="grid grid-cols-2 gap-2">
+                  <button type="button" onclick="toggleClubTypePill('academic')" id="club-academic" class="club-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                    CLB Học thuật
+                  </button>
+                  <button type="button" onclick="toggleClubTypePill('volunteer')" id="club-volunteer" class="club-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                    Đội CTXH / TNV
+                  </button>
+                  <button type="button" onclick="toggleClubTypePill('skills')" id="club-skills" class="club-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                    Kỹ năng & MC
+                  </button>
+                  <button type="button" onclick="toggleClubTypePill('sports')" id="club-sports" class="club-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition">
+                    Thể thao / Sở thích
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Modal Footer Actions -->
+          <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <button type="button" onclick="resetAllModalFilters()"
+              class="text-xs font-semibold text-slate-500 hover:text-slate-800 transition">
+              Đặt lại mặc định
+            </button>
+            <div class="flex items-center space-x-2">
+              <button type="button" onclick="closeFilterModal()"
+                class="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition">
+                Đóng
+              </button>
+              <button type="button" onclick="applyModalFilters()"
+                class="px-5 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-sm transition">
+                Áp dụng bộ lọc
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+        </div>
+      </div>
+
+      <!-- Feed Grid: Luma Card Design -->
+      <div id="feedGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Rendered dynamically -->
+      </div>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 2: LUMA SHARE TARGET INGESTION & CREATE EVENT                         -->
+    <!-- ========================================================================= -->
+    <div id="tabContent-share" class="hidden max-w-2xl mx-auto space-y-6">
+      
+      <!-- Intro Header -->
+      <div class="text-center space-y-2 pb-2">
+        <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200/60 flex items-center justify-center mx-auto shadow-xs">
+          <i class="ph-bold ph-paper-plane-tilt text-2xl"></i>
+        </div>
+        <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Thêm sự kiện từ Facebook</h2>
+        <p class="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
+          Dán link bài viết fanpage hoặc bài chia sẻ. AI sẽ tự động phân tích OpenGraph, lọc tracking URL và tính điểm theo quy chế HCMUS.
+        </p>
+      </div>
+
+      <!-- Clean Input Card (Luma input design) -->
+      <div class="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-luma space-y-4">
+        
+        <div class="space-y-2">
+          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider block">Liên kết bài viết Facebook</label>
+          <div class="relative flex items-center rounded-2xl border border-slate-200 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-100 transition-all bg-slate-50/50 p-1.5">
+            <div class="pl-3 pr-2 text-blue-600 flex items-center pointer-events-none">
+              <i class="ph-bold ph-facebook-logo text-xl"></i>
+            </div>
+            <input type="text" id="fbUrlInput"
+              placeholder="https://www.facebook.com/photo.php?fbid=..."
+              class="block w-full border-0 bg-transparent py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none font-medium">
+            <button onclick="handleIngestPreview()" id="btnIngest"
+              class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs sm:text-sm font-semibold rounded-xl transition shadow-sm flex items-center space-x-1.5 flex-shrink-0">
+              <span>Bóc tách</span>
+              <i class="ph-bold ph-sparkle text-sm"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Sample Link Pill -->
+        <div class="flex items-center justify-between text-xs pt-1">
+          <span class="text-slate-400 font-medium">Hoặc thử với bài mẫu:</span>
+          <button onclick="setRealLink()"
+            class="px-3 py-1 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold transition text-xs flex items-center space-x-1">
+            <span>Talkshow Hạt Giống Đỏ (Đoàn khoa Địa chất)</span>
+            <i class="ph-bold ph-arrow-right text-[10px]"></i>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Loading State (Luma spinner) -->
+      <div id="ingestLoading" class="hidden bg-white rounded-3xl border border-slate-200/90 p-8 text-center space-y-3 shadow-luma">
+        <div class="w-10 h-10 rounded-full border-2 border-blue-600 border-t-transparent animate-spin mx-auto"></div>
+        <p class="text-xs font-medium text-slate-600">Đang cào dữ liệu & tải poster HD từ Facebook...</p>
+      </div>
+
+      <!-- Result Card: Luma Event Details Preview -->
+      <div id="ingestResult" class="hidden bg-white rounded-3xl border border-slate-200/90 shadow-luma-card overflow-hidden transition-all duration-300">
+        
+        <!-- Poster Frame -->
+        <div id="posterContainer" class="hidden relative w-full h-64 sm:h-72 bg-slate-100 overflow-hidden group">
+          <img id="eventPosterImg" src="" alt="Event Poster" referrerpolicy="no-referrer"
+            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102">
+          <div class="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent"></div>
+          <div class="absolute bottom-4 left-5 right-5 flex items-end justify-between text-white">
+            <span class="px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md text-[11px] font-medium border border-white/20">
+              Poster chính thức
+            </span>
+            <span id="cleanHashTag" class="text-[10px] font-mono text-slate-300 bg-black/40 backdrop-blur-md px-2 py-0.5 rounded"></span>
+          </div>
+        </div>
+
+        <!-- Event Body -->
+        <div class="p-6 sm:p-7 space-y-5">
+          
+          <!-- Title & Badges -->
+          <div>
+            <div class="flex items-center gap-2 mb-2">
+              <span id="eventClauseBadge" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                Nội dung 3 (+5đ)
+              </span>
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Clean URL Lọc Tracking
+              </span>
+            </div>
+            <h3 id="eventTitle" class="text-xl font-bold text-slate-900 leading-snug"></h3>
+          </div>
+
+          <!-- Luma Date & Location Info Row -->
+          <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200/70 space-y-3">
+            <div class="flex items-center space-x-3 text-xs text-slate-700">
+              <div class="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-blue-600 flex-shrink-0">
+                <i class="ph-bold ph-calendar-blank text-base"></i>
+              </div>
+              <div>
+                <span class="font-semibold block text-slate-900">Hạn chót đăng ký</span>
+                <span id="eventDeadline" class="text-slate-500 font-medium">Đang cập nhật</span>
+              </div>
+            </div>
+
+            <div class="flex items-center space-x-3 text-xs text-slate-700">
+              <div class="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-blue-600 flex-shrink-0">
+                <i class="ph-bold ph-link text-base"></i>
+              </div>
+              <div class="truncate">
+                <span class="font-semibold block text-slate-900">Link bài viết gốc</span>
+                <span id="cleanUrlText" class="text-blue-600 font-mono text-[11px] truncate block"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Caption Text with Expand -->
+          <div>
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Mô tả sự kiện</span>
+            <p id="eventDesc" class="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto pr-2 bg-slate-50/50 p-4 rounded-2xl border border-slate-100"></p>
+          </div>
+
+          <!-- Synchronized Filter Metadata Configuration (Phân loại sự kiện chuẩn HCMUS) -->
+          <div class="bg-blue-50/50 rounded-2xl p-4 border border-blue-100 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center space-x-1">
+                <i class="ph-bold ph-faders text-sm text-blue-600"></i>
+                <span>Phân loại & Gán nhãn bộ lọc (Khuyến nghị chuẩn HCMUS)</span>
+              </span>
+              <span class="text-[10px] text-blue-600 font-semibold bg-white px-2 py-0.5 rounded-full border border-blue-200">
+                Đồng bộ tự động
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <!-- Khoa / Đơn vị -->
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Khoa / Đơn vị tổ chức:</label>
+                <select id="publishFaculty" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-600">
+                  <option value="diachat">Khoa Địa chất (Geo)</option>
+                  <option value="cntt">Khoa Công nghệ Thông tin (FIT)</option>
+                  <option value="toantin">Khoa Toán – Tin học (FMT)</option>
+                  <option value="vatly">Khoa Vật lý – VLKT (Phys)</option>
+                  <option value="hoahoc">Khoa Hóa học (Chem)</option>
+                  <option value="sinhhoc">Khoa Sinh học – CNSH (FBB)</option>
+                  <option value="moitruong">Khoa Môi trường (FES)</option>
+                  <option value="vatlieu">Khoa KH & CN Vật liệu (FMS)</option>
+                  <option value="dientu">Khoa Điện tử – Viễn thông (FETEL)</option>
+                  <option value="liennganh">Khoa Khoa học Liên ngành (FIS)</option>
+                  <option value="all">Đơn vị chung / Cấp Trường</option>
+                </select>
+              </div>
+
+              <!-- Cấp tổ chức -->
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Cấp tổ chức:</label>
+                <select id="publishOrgLevel" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-600">
+                  <option value="khoa">Khoa / Liên chi hội</option>
+                  <option value="truong">Cấp Trường / ĐHQG-HCM</option>
+                  <option value="clb">CLB / Đội / Nhóm sinh viên</option>
+                </select>
+              </div>
+
+              <!-- Cơ sở Campus -->
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Cơ sở tổ chức (Campus):</label>
+                <select id="publishCampus" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-600">
+                  <option value="cs1">Cơ sở 1 (227 Nguyễn Văn Cừ, Q5)</option>
+                  <option value="cs2">Cơ sở 2 (Linh Trung - Dĩ An)</option>
+                  <option value="external">Ngoài trường (Địa bàn CTXH)</option>
+                  <option value="online">Trực tuyến (MS Teams / Zoom / Online)</option>
+                </select>
+              </div>
+
+              <!-- Hình thức tổ chức -->
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Hình thức sự kiện:</label>
+                <select id="publishFormat" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-600">
+                  <option value="offline">Trực tiếp (Offline)</option>
+                  <option value="online">Trực tuyến (Online)</option>
+                  <option value="hybrid">Kết hợp (Hybrid)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons (Luma Style) -->
+          <div class="pt-2 border-t border-slate-100 space-y-2.5">
+            <div class="grid grid-cols-2 gap-3">
+              <button id="btnPublishEvent" onclick="handlePublishEvent()"
+                class="py-3 px-4 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-2xl font-bold text-xs sm:text-sm transition shadow-sm flex items-center justify-center space-x-1.5">
+                <i class="ph-bold ph-paper-plane-tilt"></i>
+                <span>Công bố sự kiện</span>
+              </button>
+
+              <button id="btnBookmarkEvent" onclick="handleBookmarkCurrent()"
+                class="py-3 px-4 bg-slate-900 hover:bg-slate-800 active:scale-98 text-white rounded-2xl font-bold text-xs sm:text-sm transition shadow-sm flex items-center justify-center space-x-1.5">
+                <i class="ph-bold ph-bookmark-simple"></i>
+                <span>Lưu Sổ tay ĐRL</span>
+              </button>
+            </div>
+
+            <!-- Google Calendar Reminder Action Button -->
+            <button type="button" onclick="handleGoogleCalendarFromIngest()"
+              class="w-full py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center space-x-2">
+              <i class="ph-bold ph-calendar-plus text-base text-emerald-600"></i>
+              <span>Thêm lịch nhắc hẹn vào Google Calendar</span>
+            </button>
+
+            <!-- Outbound FB Button to Preserve 100% Student Club KPI -->
+            <a id="btnFbDeepLink" href="#" target="_blank" onclick="trackOutboundClick()"
+              class="w-full py-3 px-4 bg-[#1877F2] hover:bg-blue-600 active:scale-98 text-white rounded-2xl font-semibold text-xs sm:text-sm transition shadow-sm flex items-center justify-center space-x-2">
+              <i class="ph-bold ph-facebook-logo text-lg"></i>
+              <span>Mở bài viết trong Facebook App (Bảo toàn KPI CLB)</span>
+              <i class="ph-bold ph-arrow-square-out text-sm"></i>
+            </a>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 3: PERSONAL TRACKER & HCMUS DRL SCORE CALCULATOR                      -->
+    <!-- ========================================================================= -->
+    <div id="tabContent-tracker" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- LEFT: Saved Events in Tracker (7 Cols) -->
+      <div class="lg:col-span-7 space-y-6">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-200/80">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900 tracking-tight">Sổ tay Rèn luyện Cá nhân</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Tiến trình tham gia các hoạt động đã lưu</p>
+          </div>
+          <button onclick="loadTrackerList()" class="text-xs font-semibold text-blue-600 hover:underline flex items-center space-x-1">
+            <i class="ph-bold ph-arrow-clockwise"></i>
+            <span>Làm mới</span>
+          </button>
+        </div>
+
+        <div id="trackerList" class="space-y-3">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- RIGHT: HCMUS DRL Simulator (5 Cols) -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <div class="bg-white rounded-3xl border border-slate-200/90 shadow-luma p-6 space-y-5 sticky top-24">
+          
+          <!-- Simulator Header -->
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                <i class="ph-bold ph-chart-polar text-lg"></i>
+              </div>
+              <div>
+                <h3 class="font-extrabold text-sm text-slate-900 leading-tight">Dự toán Điểm Rèn Luyện</h3>
+                <p class="text-[11px] text-slate-500">Chuẩn quy chế 100đ ĐHKHTN</p>
+              </div>
+            </div>
+            <button onclick="resetSimulator()" title="Đặt lại" class="text-xs text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+              <i class="ph-bold ph-arrow-counter-clockwise text-base"></i>
+            </button>
+          </div>
+
+          <!-- Luma Score Hero Card (Electric Blue Theme) -->
+          <div class="rounded-3xl p-6 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 text-white shadow-luma-hover space-y-4">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="text-[10px] uppercase tracking-wider text-blue-200 font-bold block">Tổng điểm rèn luyện</span>
+                <div class="text-5xl font-black mt-1 tracking-tight flex items-baseline space-x-1.5">
+                  <span id="totalScore">0</span>
+                  <span class="text-xs font-semibold text-blue-200">/ 100đ</span>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] uppercase tracking-wider text-blue-200 font-bold block mb-1">Xếp loại</span>
+                <span id="rankBadge" class="inline-block px-3 py-1 rounded-full text-xs font-black bg-white/20 text-white border border-white/30 backdrop-blur-md">
+                  KÉM
+                </span>
+              </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div>
+              <div class="w-full bg-black/20 rounded-full h-2.5 overflow-hidden p-0.5">
+                <div id="scoreBar" class="bg-white h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-blue-100 font-medium mt-2">
+                <span>0đ</span>
+                <span>Khá (65đ)</span>
+                <span>Tốt (80đ)</span>
+                <span>100đ</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5 HCMUS Criteria Inputs -->
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              <span>5 Nội dung đánh giá</span>
+              <span>Điểm / Trần</span>
+            </div>
+
+            <!-- ND1 -->
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+              <div>
+                <h4 class="font-bold text-xs text-slate-900">ND1: Học tập & NCKH</h4>
+                <p class="text-[10px] text-slate-500">Quy chế học vụ, NCKH, cuộc thi</p>
+              </div>
+              <div class="flex items-center space-x-1 font-bold text-xs">
+                <input type="number" id="input_nd1" min="0" max="30" value="15" onchange="recalculateSimulator()"
+                  class="w-12 px-1.5 py-1 text-center bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none">
+                <span class="text-slate-400 font-normal">/30</span>
+              </div>
+            </div>
+
+            <!-- ND2 -->
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+              <div>
+                <h4 class="font-bold text-xs text-slate-900">ND2: Nội quy & Quy chế</h4>
+                <p class="text-[10px] text-slate-500">Khảo sát ý kiến, đánh giá môn học</p>
+              </div>
+              <div class="flex items-center space-x-1 font-bold text-xs">
+                <input type="number" id="input_nd2" min="0" max="20" value="15" onchange="recalculateSimulator()"
+                  class="w-12 px-1.5 py-1 text-center bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none">
+                <span class="text-slate-400 font-normal">/20</span>
+              </div>
+            </div>
+
+            <!-- ND3 -->
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+              <div>
+                <h4 class="font-bold text-xs text-slate-900">ND3: Chính trị - VH - Thể thao</h4>
+                <p class="text-[10px] text-slate-500">Hội thao, văn nghệ, diễn đàn SV</p>
+              </div>
+              <div class="flex items-center space-x-1 font-bold text-xs">
+                <input type="number" id="input_nd3" min="0" max="25" value="15" onchange="recalculateSimulator()"
+                  class="w-12 px-1.5 py-1 text-center bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none">
+                <span class="text-slate-400 font-normal">/25</span>
+              </div>
+            </div>
+
+            <!-- ND4 -->
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+              <div>
+                <h4 class="font-bold text-xs text-slate-900">ND4: Phát triển cộng đồng</h4>
+                <p class="text-[10px] text-slate-500">Hiến máu (10đ), hoạt động CTXH</p>
+              </div>
+              <div class="flex items-center space-x-1 font-bold text-xs">
+                <input type="number" id="input_nd4" min="0" max="25" value="20" onchange="recalculateSimulator()"
+                  class="w-12 px-1.5 py-1 text-center bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none">
+                <span class="text-slate-400 font-normal">/25</span>
+              </div>
+            </div>
+
+            <!-- ND5 -->
+            <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+              <div>
+                <h4 class="font-bold text-xs text-slate-900">ND5: Khuyến khích cộng thêm</h4>
+                <p class="text-[10px] text-slate-500">Bài báo quốc tế (25đ), Olympic</p>
+              </div>
+              <div class="flex items-center space-x-1 font-bold text-xs">
+                <input type="number" id="input_nd5" min="0" max="30" value="10" onchange="recalculateSimulator()"
+                  class="w-12 px-1.5 py-1 text-center bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none">
+                <span class="text-slate-400 font-normal">/30</span>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 text-center">
+            Tự động áp dụng giới hạn Max Cap theo chuẩn quy chế ĐHKHTN (Tối đa 100đ).
+          </p>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ==================== LUMA FOOTER ==================== -->
+  <footer class="border-t border-slate-200/80 py-8 text-center text-xs text-slate-400">
+    <div class="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div class="flex items-center space-x-2">
+        <div class="w-5 h-5 rounded-md bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">
+          D
+        </div>
+        <span class="font-semibold text-slate-700">DRL-Hub HCMUS</span>
+      </div>
+      <p>Nền tảng Quản lý & Tối ưu Điểm Rèn Luyện Sinh Viên • Luma Style Blue Theme</p>
+    </div>
+  <!-- ==================== AUTHENTICATION MODAL (LOGIN / REGISTER) ==================== -->
+  <div id="authModalBackdrop" class="hidden fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
+    <div class="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Modal Top Bar -->
+      <div class="px-6 pt-6 pb-4 flex items-center justify-between border-b border-slate-100">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
+            <i class="ph-bold ph-lock-key text-lg"></i>
+          </div>
+          <div>
+            <h3 class="font-extrabold text-base text-slate-900 leading-tight">Cổng Tài Khoản Sinh Viên</h3>
+            <p class="text-[11px] text-slate-500">Đăng nhập tài khoản @student.hcmus.edu.vn</p>
+          </div>
+        </div>
+        <button onclick="closeAuthModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+          <i class="ph-bold ph-x text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Auth Switch Tabs -->
+      <div class="flex border-b border-slate-100 px-6 pt-2 bg-slate-50/50">
+        <button type="button" onclick="switchAuthTab('login')" id="btnAuthTab-login"
+          class="flex-1 pb-3 text-xs font-bold border-b-2 border-blue-600 text-blue-600 transition">
+          Đăng nhập
+        </button>
+        <button type="button" onclick="switchAuthTab('register')" id="btnAuthTab-register"
+          class="flex-1 pb-3 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition">
+          Đăng ký mới
+        </button>
+      </div>
+
+      <!-- Form Body -->
+      <div class="p-6 space-y-4 text-xs">
+        
+        <!-- Error Message Alert -->
+        <div id="authErrorAlert" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center space-x-2">
+          <i class="ph-bold ph-warning-circle text-base flex-shrink-0"></i>
+          <span id="authErrorMsg">Đã xảy ra lỗi</span>
+        </div>
+
+        <!-- Success Message Alert -->
+        <div id="authSuccessAlert" class="hidden p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center space-x-2">
+          <i class="ph-bold ph-check-circle text-base flex-shrink-0"></i>
+          <span id="authSuccessMsg">Thành công!</span>
+        </div>
+
+        <!-- Common: Email -->
+        <div>
+          <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1.5">
+            Email sinh viên / Cán bộ
+          </label>
+          <div class="relative">
+            <input type="email" id="authEmail" placeholder="sv.hcmus@student.hcmus.edu.vn"
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 font-medium">
+          </div>
+        </div>
+
+        <!-- Common: Password -->
+        <div>
+          <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1.5">
+            Mật khẩu
+          </label>
+          <input type="password" id="authPassword" placeholder="••••••••"
+            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 font-medium">
+        </div>
+
+        <!-- Register Specific Fields -->
+        <div id="registerFields" class="hidden space-y-3 pt-1 border-t border-slate-100">
+          <div>
+            <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1.5">
+              Họ và tên
+            </label>
+            <input type="text" id="authFullName" placeholder="Nguyễn Văn A"
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 font-medium">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1.5">
+                Mã sinh viên (MSSV)
+              </label>
+              <input type="text" id="authStudentId" placeholder="22120000"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 font-medium">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-1.5">
+                Khoa trực thuộc
+              </label>
+              <select id="authFaculty" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600 font-medium">
+                <option value="cntt">CNTT (FIT)</option>
+                <option value="toantin">Toán - Tin (FMT)</option>
+                <option value="vatly">Vật lý (Phys)</option>
+                <option value="hoahoc">Hóa học (Chem)</option>
+                <option value="sinhhoc">Sinh học (FBB)</option>
+                <option value="moitruong">Môi trường (FES)</option>
+                <option value="diachat">Địa chất (Geo)</option>
+                <option value="vatlieu">Vật liệu (FMS)</option>
+                <option value="dientu">Điện tử - VT (FETEL)</option>
+                <option value="liennganh">Khoa học Liên ngành (FIS)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="button" onclick="submitAuthForm()" id="btnSubmitAuth"
+          class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-xl font-bold text-xs shadow-sm transition flex items-center justify-center space-x-1.5 mt-2">
+          <i class="ph-bold ph-sign-in text-base"></i>
+          <span id="btnSubmitAuthText">Đăng nhập tài khoản</span>
+        </button>
+
+        <!-- Quick Demo Account Hint -->
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/70 text-[11px] text-slate-500 space-y-1">
+          <div class="font-bold text-slate-700 flex items-center space-x-1">
+            <i class="ph-bold ph-info text-blue-600"></i>
+            <span>Tài khoản kiểm thử nhanh (Demo):</span>
+          </div>
+          <div class="flex justify-between items-center font-mono text-[10px] text-slate-600">
+            <span>sv.hcmus@student.hcmus.edu.vn</span>
+            <button type="button" onclick="fillDemoAccount()" class="text-blue-600 font-bold hover:underline">Điền tự động</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== FRONTEND JAVASCRIPT LOGIC ==================== -->
+  <script>
+    let currentIngestData = null;
+
+    // Navigation Tabs
+    function switchTab(tabId) {
+      ['feed', 'share', 'tracker'].forEach(t => {
+        const btn = document.getElementById(`tabBtn-${t}`);
+        const content = document.getElementById(`tabContent-${t}`);
+        if (t === tabId) {
+          btn.className = "px-4 py-1.5 rounded-full transition-all duration-200 pill-active flex items-center space-x-1.5";
+          content.classList.remove('hidden');
+        } else {
+          btn.className = "px-4 py-1.5 rounded-full transition-all duration-200 pill-inactive flex items-center space-x-1.5";
+          content.classList.add('hidden');
+        }
+      });
+
+      if (tabId === 'feed') loadEventsFeed();
+      if (tabId === 'tracker') loadTrackerList();
+    }
+
+    function setRealLink() {
+      document.getElementById('fbUrlInput').value = "https://www.facebook.com/photo.php?fbid=1526825616138522&set=a.545830524238041&type=3&rdid=RQon08wjHXTv95q0&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1MLQ2Z8PdB#";
+      handleIngestPreview();
+    }
+
+    async function handleIngestPreview() {
+      const url = document.getElementById('fbUrlInput').value.trim();
+      if (!url) return;
+
+      const btn = document.getElementById('btnIngest');
+      const loading = document.getElementById('ingestLoading');
+      const resultCard = document.getElementById('ingestResult');
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-sm"></i>';
+      loading.classList.remove('hidden');
+      resultCard.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/v1/events/ingest-preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        currentIngestData = data;
+
+        loading.classList.add('hidden');
+        resultCard.classList.remove('hidden');
+
+        document.getElementById('cleanHashTag').innerText = (data.cleanUrlHash || '').substring(0, 10);
+        document.getElementById('cleanUrlText').innerText = data.cleanUrl;
+        document.getElementById('eventTitle').innerText = data.title;
+        document.getElementById('eventDesc').innerText = data.description || 'Không có mô tả chi tiết';
+        document.getElementById('eventDeadline').innerText = data.suggestedDeadline || 'Đang cập nhật';
+
+        // Poster image
+        const posterContainer = document.getElementById('posterContainer');
+        const posterImg = document.getElementById('eventPosterImg');
+        if (data.posterImageUrl) {
+          posterImg.src = data.posterImageUrl;
+          posterContainer.classList.remove('hidden');
+        } else {
+          posterContainer.classList.add('hidden');
+        }
+
+        // Clause
+        if (data.suggestedClauses && data.suggestedClauses.length > 0) {
+          const c = data.suggestedClauses[0];
+          document.getElementById('eventClauseBadge').innerText = `${c.clauseName} (+${c.points}đ)`;
+        } else {
+          document.getElementById('eventClauseBadge').innerText = 'Chưa xác định';
+        }
+
+        document.getElementById('btnFbDeepLink').href = data.cleanUrl;
+
+      } catch (err) {
+        loading.classList.add('hidden');
+        alert('Lỗi kết nối máy chủ: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Bóc tách</span> <i class="ph-bold ph-sparkle text-sm"></i>';
+      }
+    }
+
+    async function handlePublishEvent() {
+      if (!currentIngestData) return;
+      const btn = document.getElementById('btnPublishEvent');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-sm"></i> <span>Đang công bố...</span>';
+
+      const faculty = document.getElementById('publishFaculty')?.value || 'all';
+      const orgLevel = document.getElementById('publishOrgLevel')?.value || 'khoa';
+      const campus = document.getElementById('publishCampus')?.value || 'cs1';
+      const format = document.getElementById('publishFormat')?.value || 'offline';
+
+      try {
+        const res = await fetch('/api/v1/events/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: currentIngestData.title,
+            description: currentIngestData.description,
+            originalPostUrl: currentIngestData.cleanUrl,
+            cleanUrlHash: currentIngestData.cleanUrlHash,
+            posterImageUrl: currentIngestData.posterImageUrl,
+            registrationDeadline: currentIngestData.suggestedDeadline,
+            faculty,
+            orgLevel,
+            campus,
+            format,
+            clauses: (currentIngestData.suggestedClauses || []).map(c => ({ clauseNumber: c.clause, awardedPoints: c.points }))
+          })
+        });
+        const saved = await res.json();
+        currentIngestData.id = saved.id;
+        btn.innerHTML = '<i class="ph-bold ph-check text-base"></i> <span>Đã công bố</span>';
+        btn.className = "py-3 px-4 bg-emerald-600 text-white rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center space-x-1.5";
+        
+        // Switch to feed to see the published event
+        setTimeout(() => switchTab('feed'), 800);
+      } catch (err) {
+        alert('Lỗi công bố: ' + err.message);
+        btn.innerHTML = '<i class="ph-bold ph-paper-plane-tilt"></i> <span>Công bố sự kiện</span>';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function handleBookmarkCurrent() {
+      if (!currentIngestData) return;
+      const btn = document.getElementById('btnBookmarkEvent');
+      btn.disabled = true;
+
+      try {
+        await fetch('/api/v1/tracker/bookmark', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventId: currentIngestData.id || 'temp-' + Date.now(),
+            title: currentIngestData.title,
+            originalPostUrl: currentIngestData.cleanUrl,
+            clauseNumber: 3,
+            awardedPoints: 5
+          })
+        });
+        btn.innerHTML = '<i class="ph-fill ph-bookmark-simple"></i> <span>Đã lưu sổ tay</span>';
+      } catch (err) {
+        alert('Lỗi lưu sổ tay: ' + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function trackOutboundClick() {
+      if (currentIngestData && currentIngestData.id) {
+        fetch(`/api/v1/events/${currentIngestData.id}/click`).catch(() => {});
+      }
+    }
+
+    // Advanced Search, Filter & Sort State
+    let allFetchedEvents = [];
+    let currentClauseFilter = 'all';
+    let isFilterFavoritesOnly = false;
+    let searchDebounceTimer = null;
+
+    // Helper to safely escape strings in HTML attributes
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // ==================== FAVORITES / LIKE MANAGEMENT ====================
+    const FAVORITES_STORAGE_KEY = 'drl_hub_favorites_v1';
+
+    function getFavoriteEventIds() {
+      try {
+        const raw = localStorage.getItem(FAVORITES_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function isEventFavorite(idOrUrl) {
+      if (!idOrUrl) return false;
+      const favs = getFavoriteEventIds();
+      return favs.includes(String(idOrUrl));
+    }
+
+    function toggleFavoriteEvent(id, url, title, points, clause, poster) {
+      const favKey = String(id || url);
+      let favs = getFavoriteEventIds();
+      const index = favs.indexOf(favKey);
+
+      if (index > -1) {
+        favs.splice(index, 1);
+      } else {
+        favs.push(favKey);
+      }
+
+      localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favs));
+      updateFavoritesCounter();
+      applyFilters();
+    }
+
+    function updateFavoritesCounter() {
+      const count = getFavoriteEventIds().length;
+      const countTag = document.getElementById('favFilterCount');
+      if (countTag) countTag.innerText = count;
+    }
+
+    function toggleFavoritesOnlyFilter() {
+      isFilterFavoritesOnly = !isFilterFavoritesOnly;
+      const btn = document.getElementById('btnFavoritesFilter');
+      const icon = document.getElementById('favFilterIcon');
+
+      if (isFilterFavoritesOnly) {
+        btn.className = "px-3.5 py-1.5 rounded-full text-xs font-bold text-white bg-rose-600 border border-rose-600 transition-all whitespace-nowrap flex items-center space-x-1.5 shadow-sm";
+        icon.className = "ph-fill ph-heart text-sm text-white";
+      } else {
+        btn.className = "px-3.5 py-1.5 rounded-full text-xs font-semibold text-rose-600 hover:bg-rose-100/70 bg-rose-50 border border-rose-200/70 transition-all whitespace-nowrap flex items-center space-x-1.5";
+        icon.className = "ph-bold ph-heart text-sm";
+      }
+      applyFilters();
+    }
+
+    // Popup Modal State & Controls
+    let currentOrgLevel = 'all';
+
+    function openFilterModal() {
+      document.getElementById('filterModalBackdrop').classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+    }
+
+    function closeFilterModal() {
+      document.getElementById('filterModalBackdrop').classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    // Close modal on backdrop click
+    document.addEventListener('DOMContentLoaded', () => {
+      const backdrop = document.getElementById('filterModalBackdrop');
+      if (backdrop) {
+        backdrop.addEventListener('click', (e) => {
+          if (e.target === backdrop) closeFilterModal();
+        });
+      }
+    });
+
+    // Multi-Select Filter States
+    let selectedClauses = []; // Array of number 1..5
+    let selectedOrgLevels = []; // Array: 'truong', 'khoa', 'clb' or empty = all
+    let selectedFaculties = []; // Array: 'cntt', 'toantin', etc.
+    let selectedCampuses = []; // Array: 'cs1', 'cs2', 'external', 'online'
+    let selectedFormats = []; // Array: 'offline', 'online', 'hybrid'
+    let selectedPoints = []; // Array: '3-5', '7-10', '15+'
+    let selectedClubTypes = []; // Array: 'academic', 'volunteer', etc.
+
+    // Pill Toggle Functions
+    function toggleMultiClause(clauseNum) {
+      const idx = selectedClauses.indexOf(clauseNum);
+      const btn = document.getElementById(`pillClause-${clauseNum}`);
+      if (idx > -1) {
+        selectedClauses.splice(idx, 1);
+        if (btn) {
+          btn.className = "multi-clause-pill px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-left transition flex items-center justify-between";
+          btn.querySelector('i').classList.add('opacity-0');
+        }
+      } else {
+        selectedClauses.push(clauseNum);
+        if (btn) {
+          btn.className = "multi-clause-pill px-3 py-2 rounded-xl border border-blue-600 bg-blue-50 font-bold text-blue-700 text-left transition flex items-center justify-between";
+          btn.querySelector('i').classList.remove('opacity-0');
+        }
+      }
+    }
+
+    function selectAllClauses() {
+      const allSelected = selectedClauses.length === 5;
+      [1, 2, 3, 4, 5].forEach(num => {
+        const btn = document.getElementById(`pillClause-${num}`);
+        if (!btn) return;
+        if (allSelected) {
+          selectedClauses = [];
+          btn.className = "multi-clause-pill px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-left transition flex items-center justify-between";
+          btn.querySelector('i').classList.add('opacity-0');
+        } else {
+          if (!selectedClauses.includes(num)) selectedClauses.push(num);
+          btn.className = "multi-clause-pill px-3 py-2 rounded-xl border border-blue-600 bg-blue-50 font-bold text-blue-700 text-left transition flex items-center justify-between";
+          btn.querySelector('i').classList.remove('opacity-0');
+        }
+      });
+    }
+
+    function toggleMultiOrgLevel(level) {
+      const btnAll = document.getElementById('btnOrg-all');
+      if (level === 'all') {
+        selectedOrgLevels = [];
+        ['truong', 'khoa', 'clb'].forEach(l => {
+          const b = document.getElementById(`btnOrg-${l}`);
+          if (b) b.className = "org-level-btn px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition";
+        });
+        if (btnAll) btnAll.className = "org-level-btn px-3 py-2 rounded-xl border border-blue-600 bg-blue-50 font-bold text-blue-700 text-center transition";
+        return;
+      }
+
+      if (btnAll) btnAll.className = "org-level-btn px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition";
+      const idx = selectedOrgLevels.indexOf(level);
+      const b = document.getElementById(`btnOrg-${level}`);
+      if (idx > -1) {
+        selectedOrgLevels.splice(idx, 1);
+        if (b) b.className = "org-level-btn px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition";
+        if (selectedOrgLevels.length === 0 && btnAll) {
+          btnAll.className = "org-level-btn px-3 py-2 rounded-xl border border-blue-600 bg-blue-50 font-bold text-blue-700 text-center transition";
+        }
+      } else {
+        selectedOrgLevels.push(level);
+        if (b) b.className = "org-level-btn px-3 py-2 rounded-xl border border-blue-600 bg-blue-50 font-bold text-blue-700 text-center transition";
+      }
+    }
+
+    function toggleFacultyPill(fac) {
+      const idx = selectedFaculties.indexOf(fac);
+      const btn = document.getElementById(`fac-${fac}`);
+      if (idx > -1) {
+        selectedFaculties.splice(idx, 1);
+        if (btn) {
+          btn.className = "fac-pill px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 font-medium text-slate-700 text-left transition flex items-center justify-between";
+          btn.querySelector('i').classList.add('opacity-0');
+        }
+      } else {
+        selectedFaculties.push(fac);
+        if (btn) {
+          btn.className = "fac-pill px-2.5 py-1.5 rounded-xl border border-blue-600 bg-blue-50 font-bold text-blue-700 text-left transition flex items-center justify-between";
+          btn.querySelector('i').classList.remove('opacity-0');
+        }
+      }
+    }
+
+    function selectAllFaculties(selectAll) {
+      const facs = ['cntt', 'toantin', 'vatly', 'hoahoc', 'sinhhoc', 'moitruong', 'diachat', 'vatlieu', 'dientu', 'liennganh'];
+      selectedFaculties = selectAll ? [...facs] : [];
+      facs.forEach(f => {
+        const btn = document.getElementById(`fac-${f}`);
+        if (!btn) return;
+        if (selectAll) {
+          btn.className = "fac-pill px-2.5 py-1.5 rounded-xl border border-blue-600 bg-blue-50 font-bold text-blue-700 text-left transition flex items-center justify-between";
+          btn.querySelector('i').classList.remove('opacity-0');
+        } else {
+          btn.className = "fac-pill px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 font-medium text-slate-700 text-left transition flex items-center justify-between";
+          btn.querySelector('i').classList.add('opacity-0');
+        }
+      });
+    }
+
+    function toggleCampusPill(camp) {
+      const idx = selectedCampuses.indexOf(camp);
+      const btn = document.getElementById(`camp-${camp}`);
+      if (idx > -1) {
+        selectedCampuses.splice(idx, 1);
+        if (btn) btn.className = "camp-pill px-2.5 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition";
+      } else {
+        selectedCampuses.push(camp);
+        if (btn) btn.className = "camp-pill px-2.5 py-2 rounded-xl border border-blue-600 bg-blue-50 font-bold text-blue-700 text-center transition";
+      }
+    }
+
+    function toggleFormatPill(fmt) {
+      const idx = selectedFormats.indexOf(fmt);
+      const btn = document.getElementById(`fmt-${fmt}`);
+      if (idx > -1) {
+        selectedFormats.splice(idx, 1);
+        if (btn) btn.className = "fmt-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition";
+      } else {
+        selectedFormats.push(fmt);
+        if (btn) btn.className = "fmt-pill px-2 py-2 rounded-xl border border-blue-600 bg-blue-50 font-bold text-blue-700 text-center transition";
+      }
+    }
+
+    function togglePointsPill(pts) {
+      const idMap = { '3-5': 'pts-3-5', '7-10': 'pts-7-10', '15+': 'pts-15plus' };
+      const idx = selectedPoints.indexOf(pts);
+      const btn = document.getElementById(idMap[pts]);
+      if (idx > -1) {
+        selectedPoints.splice(idx, 1);
+        if (btn) btn.className = "pts-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition";
+      } else {
+        selectedPoints.push(pts);
+        if (btn) btn.className = "pts-pill px-2 py-2 rounded-xl border border-blue-600 bg-blue-50 font-bold text-blue-700 text-center transition";
+      }
+    }
+
+    function toggleClubTypePill(ct) {
+      const idx = selectedClubTypes.indexOf(ct);
+      const btn = document.getElementById(`club-${ct}`);
+      if (idx > -1) {
+        selectedClubTypes.splice(idx, 1);
+        if (btn) btn.className = "club-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition";
+      } else {
+        selectedClubTypes.push(ct);
+        if (btn) btn.className = "club-pill px-2 py-2 rounded-xl border border-blue-600 bg-blue-50 font-bold text-blue-700 text-center transition";
+      }
+    }
+
+    function resetAllModalFilters() {
+      selectedClauses = [];
+      [1, 2, 3, 4, 5].forEach(n => {
+        const b = document.getElementById(`pillClause-${n}`);
+        if (b) {
+          b.className = "multi-clause-pill px-3 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-left transition flex items-center justify-between";
+          b.querySelector('i')?.classList.add('opacity-0');
+        }
+      });
+
+      toggleMultiOrgLevel('all');
+      selectAllFaculties(false);
+
+      selectedCampuses = [];
+      ['cs1', 'cs2', 'external', 'online'].forEach(c => {
+        const b = document.getElementById(`camp-${c}`);
+        if (b) b.className = "camp-pill px-2.5 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition";
+      });
+
+      selectedFormats = [];
+      ['offline', 'online', 'hybrid'].forEach(f => {
+        const b = document.getElementById(`fmt-${f}`);
+        if (b) b.className = "fmt-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition";
+      });
+
+      selectedPoints = [];
+      ['pts-3-5', 'pts-7-10', 'pts-15plus'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.className = "pts-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition";
+      });
+
+      selectedClubTypes = [];
+      ['academic', 'volunteer', 'skills', 'sports'].forEach(ct => {
+        const b = document.getElementById(`club-${ct}`);
+        if (b) b.className = "club-pill px-2 py-2 rounded-xl border border-slate-200 hover:border-slate-300 font-semibold text-slate-700 text-center transition";
+      });
+
+      const favCheck = document.getElementById('modalCheckboxFavorites');
+      if (favCheck) favCheck.checked = false;
+      isFilterFavoritesOnly = false;
+    }
+
+    function applyModalFilters() {
+      const favCheck = document.getElementById('modalCheckboxFavorites');
+      if (favCheck) isFilterFavoritesOnly = favCheck.checked;
+      closeFilterModal();
+      applyFilters();
+    }
+
+    function debounceApplyFilters() {
+      const val = document.getElementById('eventSearchInput').value.trim();
+      const clearBtn = document.getElementById('btnClearSearch');
+      if (val) {
+        clearBtn.classList.remove('hidden');
+      } else {
+        clearBtn.classList.add('hidden');
+      }
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(applyFilters, 250);
+    }
+
+    function clearSearchInput() {
+      document.getElementById('eventSearchInput').value = '';
+      document.getElementById('btnClearSearch').classList.add('hidden');
+      applyFilters();
+    }
+
+    function resetAllFilters() {
+      document.getElementById('eventSearchInput').value = '';
+      document.getElementById('btnClearSearch').classList.add('hidden');
+      document.getElementById('sortSelect').value = 'newest';
+      resetAllModalFilters();
+      applyFilters();
+    }
+
+    function removeSingleFilter(filterKey, value) {
+      if (filterKey === 'search') clearSearchInput();
+      if (filterKey === 'clause') {
+        const idx = selectedClauses.indexOf(Number(value));
+        if (idx > -1) toggleMultiClause(Number(value));
+        applyFilters();
+      }
+      if (filterKey === 'favorites') {
+        isFilterFavoritesOnly = false;
+        const fc = document.getElementById('modalCheckboxFavorites');
+        if (fc) fc.checked = false;
+        applyFilters();
+      }
+      if (filterKey === 'orgLevel') {
+        toggleMultiOrgLevel(value);
+        applyFilters();
+      }
+      if (filterKey === 'faculty') {
+        toggleFacultyPill(value);
+        applyFilters();
+      }
+      if (filterKey === 'campus') {
+        toggleCampusPill(value);
+        applyFilters();
+      }
+      if (filterKey === 'format') {
+        toggleFormatPill(value);
+        applyFilters();
+      }
+      if (filterKey === 'points') {
+        togglePointsPill(value);
+        applyFilters();
+      }
+      if (filterKey === 'clubType') {
+        toggleClubTypePill(value);
+        applyFilters();
+      }
+    }
+
+    function updateFilterChipsAndBadge() {
+      let activeCount = 0;
+      const chipsDiv = document.getElementById('activeFilterChips');
+      const resetBtn = document.getElementById('btnResetAllFilters');
+      chipsDiv.innerHTML = '';
+
+      const searchKeyword = (document.getElementById('eventSearchInput').value || '').trim();
+
+      // Search Chip
+      if (searchKeyword) {
+        activeCount++;
+        chipsDiv.innerHTML += `
+          <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-semibold border border-slate-200">
+            <span>"${searchKeyword}"</span>
+            <button onclick="removeSingleFilter('search')" class="hover:text-slate-900"><i class="ph-bold ph-x text-[10px]"></i></button>
+          </span>`;
+      }
+
+      // Clauses Chips
+      selectedClauses.forEach(c => {
+        activeCount++;
+        chipsDiv.innerHTML += `
+          <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+            <span>ND${c}</span>
+            <button onclick="removeSingleFilter('clause', ${c})" class="hover:text-blue-900"><i class="ph-bold ph-x text-[10px]"></i></button>
+          </span>`;
+      });
+
+      // Favorites Chip
+      if (isFilterFavoritesOnly) {
+        activeCount++;
+        chipsDiv.innerHTML += `
+          <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 font-semibold border border-rose-200">
+            <i class="ph-fill ph-heart text-xs text-rose-500"></i>
+            <span>Đã thích</span>
+            <button onclick="removeSingleFilter('favorites')" class="hover:text-rose-900"><i class="ph-bold ph-x text-[10px]"></i></button>
+          </span>`;
+      }
+
+      // Org Levels Chips
+      const orgNames = { truong: 'Cấp Trường', khoa: 'Khoa/LCH', clb: 'CLB/Đội nhóm' };
+      selectedOrgLevels.forEach(org => {
+        activeCount++;
+        chipsDiv.innerHTML += `
+          <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200">
+            <span>${orgNames[org] || org}</span>
+            <button onclick="removeSingleFilter('orgLevel', '${org}')" class="hover:text-indigo-900"><i class="ph-bold ph-x text-[10px]"></i></button>
+          </span>`;
+      });
+
+      // Faculties Chips
+      selectedFaculties.forEach(f => {
+        activeCount++;
+        chipsDiv.innerHTML += `
+          <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
+            <span>${f.toUpperCase()}</span>
+            <button onclick="removeSingleFilter('faculty', '${f}')" class="hover:text-emerald-900"><i class="ph-bold ph-x text-[10px]"></i></button>
+          </span>`;
+      });
+
+      // Campuses Chips
+      const campusNames = { cs1: 'CS1 (Q5)', cs2: 'CS2 (Dĩ An)', external: 'Ngoài trường', online: 'Online' };
+      selectedCampuses.forEach(cp => {
+        activeCount++;
+        chipsDiv.innerHTML += `
+          <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 font-semibold border border-amber-200">
+            <span>${campusNames[cp] || cp}</span>
+            <button onclick="removeSingleFilter('campus', '${cp}')" class="hover:text-amber-900"><i class="ph-bold ph-x text-[10px]"></i></button>
+          </span>`;
+      });
+
+      // Formats Chips
+      const formatNames = { offline: 'Trực tiếp', online: 'Online', hybrid: 'Hybrid' };
+      selectedFormats.forEach(fmt => {
+        activeCount++;
+        chipsDiv.innerHTML += `
+          <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 font-semibold border border-purple-200">
+            <span>${formatNames[fmt] || fmt}</span>
+            <button onclick="removeSingleFilter('format', '${fmt}')" class="hover:text-purple-900"><i class="ph-bold ph-x text-[10px]"></i></button>
+          </span>`;
+      });
+
+      // Points Chips
+      selectedPoints.forEach(pts => {
+        activeCount++;
+        chipsDiv.innerHTML += `
+          <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 font-semibold border border-rose-200">
+            <span>+${pts}đ</span>
+            <button onclick="removeSingleFilter('points', '${pts}')" class="hover:text-rose-900"><i class="ph-bold ph-x text-[10px]"></i></button>
+          </span>`;
+      });
+
+      // Club Types Chips
+      const clubNames = { academic: 'Học thuật', volunteer: 'Tình nguyện', skills: 'Kỹ năng/MC', sports: 'Thể thao' };
+      selectedClubTypes.forEach(ct => {
+        activeCount++;
+        chipsDiv.innerHTML += `
+          <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-teal-50 text-teal-700 font-semibold border border-teal-200">
+            <span>${clubNames[ct] || ct}</span>
+            <button onclick="removeSingleFilter('clubType', '${ct}')" class="hover:text-teal-900"><i class="ph-bold ph-x text-[10px]"></i></button>
+          </span>`;
+      });
+
+      // If no active filters, show default label
+      const badge = document.getElementById('activeFiltersBadge');
+      if (activeCount === 0) {
+        chipsDiv.innerHTML = '<span id="noFiltersChip" class="text-slate-400 italic text-[11px]">Đang hiển thị tất cả sự kiện</span>';
+        if (resetBtn) resetBtn.classList.add('hidden');
+        if (badge) badge.classList.add('hidden');
+      } else {
+        if (resetBtn) resetBtn.classList.remove('hidden');
+        if (badge) {
+          badge.innerText = activeCount;
+          badge.classList.remove('hidden');
+        }
+      }
+    }
+
+    // Apply client-side filtering and sorting on allFetchedEvents
+    function applyFilters() {
+      updateFilterChipsAndBadge();
+
+      const searchKeyword = (document.getElementById('eventSearchInput').value || '').toLowerCase().trim();
+      const sortBy = document.getElementById('sortSelect').value;
+
+      let filtered = [...allFetchedEvents];
+
+      // 0. Filter by Favorites / Liked Only
+      if (isFilterFavoritesOnly) {
+        const favIds = getFavoriteEventIds();
+        filtered = filtered.filter(item => favIds.includes(String(item.id || item.originalPostUrl)));
+      }
+
+      // 1. Filter by HCMUS Clauses (Multi-Select)
+      if (selectedClauses.length > 0) {
+        filtered = filtered.filter(item => {
+          const itemClauses = (item.clauses || []).map(c => c.clauseNumber)
+            .concat((item.criteriaMappings || []).map(m => m.criteriaId));
+          return selectedClauses.some(c => itemClauses.includes(c));
+        });
+      }
+
+      // 2. Filter by Search Keyword (Title, Description, Organizer)
+      if (searchKeyword) {
+        filtered = filtered.filter(item => {
+          const title = (item.title || '').toLowerCase();
+          const desc = (item.description || '').toLowerCase();
+          return title.includes(searchKeyword) || desc.includes(searchKeyword);
+        });
+      }
+
+      // 3. Filter by Faculties (Multi-Select)
+      if (selectedFaculties.length > 0) {
+        const facultyKeywords = {
+          cntt: ['công nghệ thông tin', 'cntt', 'fit'],
+          toantin: ['toán – tin', 'toán tin', 'toán', 'fmt'],
+          vatly: ['vật lý', 'phys', 'nes'],
+          hoahoc: ['hóa học', 'hóa', 'chem'],
+          sinhhoc: ['sinh học', 'công nghệ sinh học', 'fbb', 'cnsh'],
+          moitruong: ['môi trường', 'fes'],
+          diachat: ['địa chất', 'geo'],
+          vatlieu: ['vật liệu', 'fms'],
+          dientu: ['điện tử', 'viễn thông', 'fetel'],
+          liennganh: ['liên ngành', 'khoa học liên ngành', 'fis']
+        };
+
+        filtered = filtered.filter(item => {
+          if (item.faculty && selectedFaculties.includes(item.faculty)) return true;
+          const fullText = `${item.title} ${item.description}`.toLowerCase();
+          return selectedFaculties.some(f => {
+            const kws = facultyKeywords[f] || [];
+            return kws.some(k => fullText.includes(k));
+          });
+        });
+      }
+
+      // 4. Filter by Org Level (Multi-Select)
+      if (selectedOrgLevels.length > 0) {
+        filtered = filtered.filter(item => {
+          if (item.orgLevel && selectedOrgLevels.includes(item.orgLevel)) return true;
+          const text = `${item.title} ${item.description}`.toLowerCase();
+          return selectedOrgLevels.some(lvl => {
+            if (lvl === 'truong') return text.includes('trường') || text.includes('đhqg');
+            if (lvl === 'khoa') return text.includes('khoa') || text.includes('liên chi hội');
+            if (lvl === 'clb') return text.includes('clb') || text.includes('câu lạc bộ') || text.includes('đội');
+            return false;
+          });
+        });
+      }
+
+      // 5. Filter by Points Range (Multi-Select)
+      if (selectedPoints.length > 0) {
+        filtered = filtered.filter(item => {
+          const pts = item.pointsAwarded || 5;
+          return selectedPoints.some(range => {
+            if (range === '3-5') return pts >= 3 && pts <= 5;
+            if (range === '7-10') return pts >= 7 && pts <= 10;
+            if (range === '15+') return pts >= 15;
+            return false;
+          });
+        });
+      }
+
+      // 6. Filter by Format (Multi-Select)
+      if (selectedFormats.length > 0) {
+        filtered = filtered.filter(item => {
+          if (item.format && selectedFormats.includes(item.format)) return true;
+          const text = `${item.title} ${item.description}`.toLowerCase();
+          return selectedFormats.some(fmt => {
+            if (fmt === 'online') return text.includes('online') || text.includes('trực tuyến');
+            if (fmt === 'offline') return text.includes('trực tiếp') || text.includes('hội trường');
+            if (fmt === 'hybrid') return text.includes('hybrid') || text.includes('kết hợp');
+            return false;
+          });
+        });
+      }
+
+      // 7. Filter by Campus (Multi-Select)
+      if (selectedCampuses.length > 0) {
+        filtered = filtered.filter(item => {
+          if (item.campus && selectedCampuses.includes(item.campus)) return true;
+          const text = `${item.title} ${item.description}`.toLowerCase();
+          return selectedCampuses.some(camp => {
+            if (camp === 'cs1') return text.includes('nguyễn văn cừ') || text.includes('quận 5');
+            if (camp === 'cs2') return text.includes('linh trung') || text.includes('dĩ an');
+            if (camp === 'online') return text.includes('online') || text.includes('trực tuyến');
+            if (camp === 'external') return text.includes('tình nguyện') || text.includes('ngoại khóa');
+            return false;
+          });
+        });
+      }
+
+      // 8. Filter by Club Type (Multi-Select)
+      if (selectedClubTypes.length > 0) {
+        filtered = filtered.filter(item => {
+          const text = `${item.title} ${item.description}`.toLowerCase();
+          return selectedClubTypes.some(ct => {
+            if (ct === 'academic') return text.includes('học thuật') || text.includes('hackathon') || text.includes('olympic');
+            if (ct === 'volunteer') return text.includes('ctxh') || text.includes('tình nguyện') || text.includes('xanh');
+            if (ct === 'skills') return text.includes('kỹ năng') || text.includes('lý luận') || text.includes('talkshow');
+            if (ct === 'sports') return text.includes('bóng đá') || text.includes('thể thao');
+            return false;
+          });
+        });
+      }
+
+      // 9. Sorting
+      if (sortBy === 'points-desc') {
+        filtered.sort((a, b) => (b.pointsAwarded || 5) - (a.pointsAwarded || 5));
+      } else if (sortBy === 'points-asc') {
+        filtered.sort((a, b) => (a.pointsAwarded || 5) - (b.pointsAwarded || 5));
+      } else if (sortBy === 'clicks-desc') {
+        filtered.sort((a, b) => (b.clickCount || 0) - (a.clickCount || 0));
+      } else {
+        filtered.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      }
+
+      renderEventsGrid(filtered);
+    }
+
+    // Render Events Grid
+    function renderEventsGrid(items) {
+      const grid = document.getElementById('feedGrid');
+      const countBadge = document.getElementById('eventsCountBadge');
+      if (countBadge) countBadge.innerText = `${items.length} sự kiện`;
+
+      if (!items || items.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-3 text-center py-20 px-4 bg-white rounded-3xl border border-slate-200/80 shadow-luma">
+            <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
+              <i class="ph-bold ph-funnel-x text-2xl"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-900">Không tìm thấy sự kiện phù hợp</h3>
+            <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">Thử xóa bộ lọc tìm kiếm hoặc chọn danh mục quy chế khác để xem thêm sự kiện.</p>
+            <button onclick="resetAllFilters()" class="mt-4 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full text-xs font-semibold shadow-sm transition">
+              Đặt lại bộ lọc
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = items.map(item => {
+        const isFav = isEventFavorite(item.id || item.originalPostUrl);
+        return `
+        <div class="bg-white rounded-3xl border border-slate-200/80 shadow-luma hover:shadow-luma-hover overflow-hidden flex flex-col justify-between transition-all duration-300 group cursor-pointer relative"
+          onclick="window.open('${item.originalPostUrl}', '_blank'); fetch('/api/v1/events/${item.id}/click');">
+          <div>
+            <!-- Poster / Cover Image -->
+            ${item.posterImageUrl ? `
+              <div class="h-44 w-full bg-slate-100 overflow-hidden relative">
+                <img src="${item.posterImageUrl}" referrerpolicy="no-referrer" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-103">
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/50 via-transparent to-transparent"></div>
+                
+                <!-- DRL Badge -->
+                <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-[10px] font-extrabold text-blue-600 shadow-sm">
+                  +${item.pointsAwarded || 5}đ ĐRL
+                </span>
+
+                <!-- Quick Like / Heart Button (Top Right) -->
+                <button type="button"
+                  onclick="event.stopPropagation(); toggleFavoriteEvent('${item.id}', '${item.originalPostUrl}', '${escapeHtml(item.title)}', '${item.pointsAwarded || 5}', '${item.clauses?.[0]?.clauseNumber || 3}', '${item.posterImageUrl || ''}')"
+                  class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 hover:bg-white backdrop-blur-md flex items-center justify-center transition shadow-sm active:scale-90 z-10"
+                  title="${isFav ? 'Bỏ thích' : 'Yêu thích sự kiện'}">
+                  <i class="${isFav ? 'ph-fill ph-heart text-rose-500' : 'ph-bold ph-heart text-slate-500 hover:text-rose-500'} text-base"></i>
+                </button>
+              </div>
+            ` : `
+              <div class="h-28 w-full bg-gradient-to-br from-blue-500 to-blue-700 relative p-4 flex items-end justify-between">
+                <span class="px-2.5 py-1 rounded-full bg-white/95 text-[10px] font-extrabold text-blue-600 shadow-sm">
+                  +${item.pointsAwarded || 5}đ ĐRL
+                </span>
+
+                <!-- Quick Like / Heart Button -->
+                <button type="button"
+                  onclick="event.stopPropagation(); toggleFavoriteEvent('${item.id}', '${item.originalPostUrl}', '${escapeHtml(item.title)}', '${item.pointsAwarded || 5}', '${item.clauses?.[0]?.clauseNumber || 3}', '')"
+                  class="w-8 h-8 rounded-full bg-white/90 hover:bg-white backdrop-blur-md flex items-center justify-center transition shadow-sm active:scale-90 z-10"
+                  title="${isFav ? 'Bỏ thích' : 'Yêu thích sự kiện'}">
+                  <i class="${isFav ? 'ph-fill ph-heart text-rose-500' : 'ph-bold ph-heart text-slate-500 hover:text-rose-500'} text-base"></i>
+                </button>
+              </div>
+            `}
+
+            <!-- Luma Details Layout -->
+            <div class="p-5">
+              <div class="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold mb-2">
+                <span class="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60 uppercase">
+                  Nội dung ${item.clauses?.[0]?.clauseNumber || item.criteriaMappings?.[0]?.criteriaId || 3}
+                </span>
+                ${item.faculty ? `
+                  <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                    ${item.faculty.toUpperCase()}
+                  </span>
+                ` : ''}
+                ${item.campus ? `
+                  <span class="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/60">
+                    ${item.campus === 'cs1' ? 'CS1 (Q5)' : item.campus === 'cs2' ? 'CS2 (Dĩ An)' : item.campus === 'online' ? 'Online' : 'Ngoài trường'}
+                  </span>
+                ` : ''}
+                ${item.format ? `
+                  <span class="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/60">
+                    ${item.format === 'offline' ? 'Trực tiếp' : item.format === 'online' ? 'Online' : 'Hybrid'}
+                  </span>
+                ` : ''}
+              </div>
+              <h4 class="font-bold text-sm text-slate-900 line-clamp-2 leading-snug mb-2 group-hover:text-blue-600 transition">
+                ${item.title}
+              </h4>
+              <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                ${item.description || 'Không có mô tả chi tiết'}
+              </p>
+            </div>
+          </div>
+
+          <!-- Footer: Outbound link & KPI status -->
+          <div class="p-5 pt-0">
+            <div class="border-t border-slate-100 pt-3 flex items-center justify-between text-xs">
+              <div class="flex items-center space-x-2.5">
+                <span class="text-slate-400 font-medium flex items-center space-x-1">
+                  <i class="ph ph-eye"></i>
+                  <span>${item.clickCount || 0}</span>
+                </span>
+                <button type="button"
+                  onclick="event.stopPropagation(); toggleFavoriteEvent('${item.id}', '${item.originalPostUrl}', '${escapeHtml(item.title)}', '${item.pointsAwarded || 5}', '${item.clauses?.[0]?.clauseNumber || 3}', '${item.posterImageUrl || ''}')"
+                  class="flex items-center space-x-1 text-slate-500 hover:text-rose-600 transition">
+                  <i class="${isFav ? 'ph-fill ph-heart text-rose-500' : 'ph-bold ph-heart text-slate-400'} text-sm"></i>
+                  <span class="${isFav ? 'text-rose-600 font-bold' : ''}">${isFav ? 'Đã thích' : 'Thích'}</span>
+                </button>
+                <button type="button"
+                  onclick="event.stopPropagation(); addEventToGoogleCalendar('${escapeHtml(item.title)}', '${item.registrationDeadline || ''}', '${escapeHtml(item.description || '')}', '${item.campus || ''}')"
+                  title="Thêm nhắc hẹn vào Google Calendar"
+                  class="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition flex items-center space-x-1 text-[11px] font-bold">
+                  <i class="ph-bold ph-calendar-plus text-sm"></i>
+                  <span class="hidden sm:inline">Lịch</span>
+                </button>
+              </div>
+              <span class="text-blue-600 font-semibold flex items-center space-x-1 group-hover:translate-x-0.5 transition">
+                <span>Mở Facebook</span>
+                <i class="ph-bold ph-arrow-right text-[11px]"></i>
+              </span>
+            </div>
+          </div>
+        </div>
+        `;
+      }).join('');
+    }
+
+    // Load Events from API
+    async function loadEventsFeed() {
+      const grid = document.getElementById('feedGrid');
+      grid.innerHTML = '<div class="col-span-3 text-center py-16 text-slate-400 font-medium text-sm">Đang tải danh sách sự kiện...</div>';
+
+      try {
+        const res = await fetch('/api/v1/events');
+        const data = await res.json();
+        allFetchedEvents = data.items || [];
+        applyFilters();
+      } catch (err) {
+        grid.innerHTML = '<div class="col-span-3 text-center py-12 text-rose-500">Lỗi tải danh mục sự kiện</div>';
+      }
+    }
+
+    // Load Personal Tracker
+    async function loadTrackerList() {
+      const list = document.getElementById('trackerList');
+      list.innerHTML = '<div class="text-center py-8 text-slate-400">Đang tải sổ tay ĐRL...</div>';
+
+      try {
+        const res = await fetch('/api/v1/tracker/summary');
+        const data = await res.json();
+
+        if (!data.trackedEvents || data.trackedEvents.length === 0) {
+          list.innerHTML = `
+            <div class="p-10 text-center bg-white rounded-3xl border border-slate-200/80 shadow-luma">
+              <div class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-2.5">
+                <i class="ph-bold ph-bookmark-simple text-xl"></i>
+              </div>
+              <h3 class="text-sm font-bold text-slate-800">Sổ tay ĐRL hiện đang trống</h3>
+              <p class="text-xs text-slate-400 mt-1">Lưu các sự kiện từ mục Khám phá để theo dõi tiến trình xét điểm.</p>
+            </div>
+          `;
+          return;
+        }
+
+        list.innerHTML = data.trackedEvents.map(t => `
+          <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-luma flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h4 class="font-bold text-sm text-slate-900">${t.title}</h4>
+              <p class="text-xs text-blue-600 font-semibold mt-0.5 flex items-center space-x-1">
+                <i class="ph-bold ph-check-circle"></i>
+                <span>+${t.awardedPoints || 5}đ ĐRL (Nội dung ${t.clauseNumber || 3})</span>
+              </p>
+            </div>
+            <div class="flex items-center space-x-3">
+              <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                ${t.status}
+              </span>
+              <a href="${t.originalPostUrl}" target="_blank"
+                class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition">
+                <i class="ph-bold ph-arrow-square-out text-sm"></i>
+              </a>
+            </div>
+          </div>
+        `).join('');
+      } catch {
+        list.innerHTML = '<div class="text-center py-8 text-rose-500">Lỗi tải sổ tay</div>';
+      }
+    }
+
+    // HCMUS Score Simulator
+    function recalculateSimulator() {
+      const nd1 = Math.min(parseInt(document.getElementById('input_nd1').value || 0), 30);
+      const nd2 = Math.min(parseInt(document.getElementById('input_nd2').value || 0), 20);
+      const nd3 = Math.min(parseInt(document.getElementById('input_nd3').value || 0), 25);
+      const nd4 = Math.min(parseInt(document.getElementById('input_nd4').value || 0), 25);
+      const nd5 = Math.min(parseInt(document.getElementById('input_nd5').value || 0), 30);
+
+      const total = Math.min(nd1 + nd2 + nd3 + nd4 + nd5, 100);
+      document.getElementById('totalScore').innerText = total;
+      document.getElementById('scoreBar').style.width = total + '%';
+
+      const rankBadge = document.getElementById('rankBadge');
+      if (total >= 90) {
+        rankBadge.innerText = 'XUẤT SẮC';
+        rankBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-black bg-emerald-400/20 text-emerald-200 border border-emerald-400/30';
+      } else if (total >= 80) {
+        rankBadge.innerText = 'TỐT';
+        rankBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-black bg-white/20 text-white border border-white/30';
+      } else if (total >= 65) {
+        rankBadge.innerText = 'KHÁ';
+        rankBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-black bg-white/20 text-blue-100 border border-white/20';
+      } else if (total >= 50) {
+        rankBadge.innerText = 'TRUNG BÌNH';
+        rankBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-black bg-amber-400/20 text-amber-200 border border-amber-400/30';
+      } else if (total >= 35) {
+        rankBadge.innerText = 'YẾU';
+        rankBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-black bg-orange-400/20 text-orange-200 border border-orange-400/30';
+      } else {
+        rankBadge.innerText = 'KÉM';
+        rankBadge.className = 'inline-block px-3 py-1 rounded-full text-xs font-black bg-rose-400/20 text-rose-200 border border-rose-400/30';
+      }
+    }
+
+    function resetSimulator() {
+      document.getElementById('input_nd1').value = 0;
+      document.getElementById('input_nd2').value = 0;
+      document.getElementById('input_nd3').value = 0;
+      document.getElementById('input_nd4').value = 0;
+      document.getElementById('input_nd5').value = 0;
+      recalculateSimulator();
+    }
+
+    // ==================== GOOGLE CALENDAR SCHEDULE & REMINDER ====================
+    function generateGoogleCalendarUrl(title, deadlineStr, description, campus) {
+      const locationMap = {
+        cs1: 'Cơ sở 1, 227 Nguyễn Văn Cừ, Quận 5, TP.HCM',
+        cs2: 'Cơ sở 2, Khu ĐHQG-HCM, Linh Trung - Dĩ An, Bình Dương',
+        online: 'Trực tuyến (Online / MS Teams)',
+        external: 'Địa điểm tổ chức ngoài trường'
+      };
+      const location = locationMap[campus] || campus || 'Trường ĐH Khoa học Tự nhiên, ĐHQG-HCM';
+
+      let startDate = new Date();
+      let endDate = new Date(startDate.getTime() + 2 * 3600000); // 2 hours duration by default
+
+      if (deadlineStr) {
+        const parsed = new Date(deadlineStr);
+        if (!isNaN(parsed.getTime())) {
+          startDate = parsed;
+          endDate = new Date(startDate.getTime() + 2 * 3600000);
+        }
+      }
+
+      function formatIsoDate(d) {
+        return d.toISOString().replace(/-|:|\.\d\d\d/g, "");
+      }
+
+      const datesParam = `${formatIsoDate(startDate)}/${formatIsoDate(endDate)}`;
+      const details = `${description || ''}\n\n* Tạo tự động từ DRL-Hub HCMUS - Nền tảng quản lý Điểm Rèn Luyện Sinh viên.`;
+
+      const params = new URLSearchParams({
+        action: 'TEMPLATE',
+        text: `[DRL-Hub HCMUS] ${title}`,
+        dates: datesParam,
+        details: details,
+        location: location
+      });
+
+      return `https://calendar.google.com/calendar/render?${params.toString()}`;
+    }
+
+    function addEventToGoogleCalendar(title, deadline, description, campus) {
+      const url = generateGoogleCalendarUrl(title, deadline, description, campus);
+      window.open(url, '_blank');
+    }
+
+    function handleGoogleCalendarFromIngest() {
+      if (!currentIngestData) return;
+      const campus = document.getElementById('publishCampus')?.value || 'cs1';
+      addEventToGoogleCalendar(
+        currentIngestData.title,
+        currentIngestData.suggestedDeadline,
+        currentIngestData.description,
+        campus
+      );
+    }
+
+    // ==================== AUTHENTICATION & SECURITY ====================
+    let currentAuthTab = 'login';
+    const AUTH_TOKEN_KEY = 'drl_hub_token_v1';
+    const AUTH_USER_KEY = 'drl_hub_user_v1';
+
+    function openAuthModal(mode = 'login') {
+      switchAuthTab(mode);
+      document.getElementById('authErrorAlert').classList.add('hidden');
+      document.getElementById('authSuccessAlert').classList.add('hidden');
+      document.getElementById('authModalBackdrop').classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModalBackdrop').classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    function switchAuthTab(tab) {
+      currentAuthTab = tab;
+      const btnLogin = document.getElementById('btnAuthTab-login');
+      const btnRegister = document.getElementById('btnAuthTab-register');
+      const regFields = document.getElementById('registerFields');
+      const btnSubmit = document.getElementById('btnSubmitAuthText');
+
+      if (tab === 'login') {
+        btnLogin.className = "flex-1 pb-3 text-xs font-bold border-b-2 border-blue-600 text-blue-600 transition";
+        btnRegister.className = "flex-1 pb-3 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition";
+        regFields.classList.add('hidden');
+        btnSubmit.innerText = 'Đăng nhập tài khoản';
+      } else {
+        btnRegister.className = "flex-1 pb-3 text-xs font-bold border-b-2 border-blue-600 text-blue-600 transition";
+        btnLogin.className = "flex-1 pb-3 text-xs font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition";
+        regFields.classList.remove('hidden');
+        btnSubmit.innerText = 'Đăng ký tài khoản mới';
+      }
+    }
+
+    function fillDemoAccount() {
+      document.getElementById('authEmail').value = 'sv.hcmus@student.hcmus.edu.vn';
+      document.getElementById('authPassword').value = 'HCMUS@2026';
+    }
+
+    async function submitAuthForm() {
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      const errBox = document.getElementById('authErrorAlert');
+      const errMsg = document.getElementById('authErrorMsg');
+      const succBox = document.getElementById('authSuccessAlert');
+      const succMsg = document.getElementById('authSuccessMsg');
+      const btn = document.getElementById('btnSubmitAuth');
+
+      errBox.classList.add('hidden');
+      succBox.classList.add('hidden');
+
+      if (!email || !password) {
+        errMsg.innerText = 'Vui lòng nhập đầy đủ Email và Mật khẩu.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-base"></i> <span>Đang xử lý...</span>';
+
+      try {
+        if (currentAuthTab === 'login') {
+          const res = await fetch('/api/v1/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || 'Đăng nhập không thành công');
+
+          localStorage.setItem(AUTH_TOKEN_KEY, data.accessToken);
+          localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+          succMsg.innerText = `Chào mừng ${data.user.fullName || data.user.email}! Đăng nhập thành công.`;
+          succBox.classList.remove('hidden');
+          syncAuthUI();
+          setTimeout(() => closeAuthModal(), 900);
+        } else {
+          const fullName = document.getElementById('authFullName').value.trim();
+          const studentId = document.getElementById('authStudentId').value.trim();
+          const faculty = document.getElementById('authFaculty').value;
+
+          const res = await fetch('/api/v1/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, fullName, studentId, faculty })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || 'Đăng ký không thành công');
+
+          localStorage.setItem(AUTH_TOKEN_KEY, data.accessToken);
+          localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+          succMsg.innerText = 'Đăng ký thành công! Hệ thống đã kích hoạt bảo mật tài khoản.';
+          succBox.classList.remove('hidden');
+          syncAuthUI();
+          setTimeout(() => closeAuthModal(), 1000);
+        }
+      } catch (err) {
+        errMsg.innerText = err.message;
+        errBox.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="ph-bold ${currentAuthTab === 'login' ? 'ph-sign-in' : 'ph-user-plus'} text-base"></i> <span id="btnSubmitAuthText">${currentAuthTab === 'login' ? 'Đăng nhập tài khoản' : 'Đăng ký tài khoản mới'}</span>`;
+      }
+    }
+
+    function syncAuthUI() {
+      const userRaw = localStorage.getItem(AUTH_USER_KEY);
+      const btnOpen = document.getElementById('btnOpenAuthModal');
+      const userPill = document.getElementById('userProfilePill');
+      const nameTxt = document.getElementById('userNameText');
+      const avatarTxt = document.getElementById('userAvatarText');
+
+      if (userRaw) {
+        try {
+          const user = JSON.parse(userRaw);
+          if (btnOpen) btnOpen.classList.add('hidden');
+          if (userPill) userPill.classList.remove('hidden');
+          if (nameTxt) nameTxt.innerText = user.fullName || user.email.split('@')[0];
+          if (avatarTxt) avatarTxt.innerText = (user.fullName ? user.fullName[0] : user.email[0]).toUpperCase();
+        } catch {
+          handleLogout();
+        }
+      } else {
+        if (btnOpen) btnOpen.classList.remove('hidden');
+        if (userPill) userPill.classList.add('hidden');
+      }
+    }
+
+    function handleLogout() {
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem(AUTH_USER_KEY);
+      syncAuthUI();
+    }
+
+    // Service Worker for Mobile PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+
+    // Initial load
+    recalculateSimulator();
+    updateFavoritesCounter();
+    syncAuthUI();
+    loadEventsFeed();
+  </script>
+</body>
+</html>
