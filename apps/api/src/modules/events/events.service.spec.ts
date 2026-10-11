@@ -13,24 +13,23 @@ describe('EventsService', () => {
     service = new EventsService(prisma);
   });
 
-  it('should return initial seed mock events with HCMUS faculties and campuses', async () => {
+  it('should start with an empty clean event list', async () => {
     const res = await service.findAll({});
     expect(res.items).toBeDefined();
-    expect(res.items.length).toBeGreaterThanOrEqual(5);
-
-    const first = res.items[0];
-    expect(first.title).toBeDefined();
-    expect(first.faculty).toBeDefined();
-    expect(first.pointsAwarded).toBeGreaterThan(0);
+    expect(res.items.length).toBe(0);
   });
 
-  it('should filter events by clause number correctly', async () => {
+  it('should filter published events by clause number correctly', async () => {
+    await service.publish({
+      title: 'Talkshow Nội dung 3',
+      originalPostUrl: 'https://fb.com/test-nd3',
+      cleanUrlHash: 'hash-nd3',
+      clauses: [{ clauseNumber: 3, awardedPoints: 5 }]
+    });
+
     const res = await service.findAll({ clause: 3 });
-    expect(res.items.length).toBeGreaterThan(0);
-    const allClause3 = res.items.every((item: any) =>
-      item.criteriaMappings.some((m: any) => m.criteriaId === 3)
-    );
-    expect(allClause3).toBe(true);
+    expect(res.items.length).toBe(1);
+    expect(res.items[0].criteriaMappings[0].criteriaId).toBe(3);
   });
 
   it('should publish a new event with metadata and calculate total pointsAwarded', async () => {
