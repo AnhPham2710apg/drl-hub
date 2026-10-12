@@ -8,6 +8,7 @@ export interface PublishEventInput {
   cleanUrlHash: string;
   description?: string;
   posterImageUrl?: string;
+  images?: string[];
   registrationDeadline?: string;
   organizerName?: string;
   faculty?: string;
@@ -63,6 +64,7 @@ export class EventsService {
       });
       return {
         ...event,
+        images: input.images || (input.posterImageUrl ? [input.posterImageUrl] : []),
         faculty: input.faculty,
         campus: input.campus,
         format: input.format,
@@ -83,6 +85,7 @@ export class EventsService {
         cleanUrlHash: input.cleanUrlHash,
         description: input.description,
         posterImageUrl: input.posterImageUrl,
+        images: input.images || (input.posterImageUrl ? [input.posterImageUrl] : []),
         registrationDeadline: input.registrationDeadline,
         status: EventStatus.PUBLISHED,
         pointsAwarded: input.clauses.reduce((acc, c) => acc + c.awardedPoints, 0),

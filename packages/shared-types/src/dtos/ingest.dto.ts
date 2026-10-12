@@ -11,6 +11,7 @@ export interface IngestPreviewResponse {
   title: string;
   description?: string;
   posterImageUrl?: string;
+  posterImages?: string[];
   suggestedClauses: Array<{
     clause: DrlClause;
     clauseName: string;
@@ -19,6 +20,14 @@ export interface IngestPreviewResponse {
     points: number;
   }>;
   suggestedDeadline?: string;
+  extractedDate?: string;
+  extractedTime?: string;
+  extractedLocation?: string;
+  extractedRegistrationLink?: string;
+  suggestedFaculty?: string;
+  suggestedOrgLevel?: string;
+  suggestedCampus?: string;
+  suggestedFormat?: string;
 }
 
 export interface PublishEventRequest {
@@ -27,6 +36,7 @@ export interface PublishEventRequest {
   cleanUrlHash: string;
   description?: string;
   posterImageUrl?: string;
+  images?: string[];
   registrationDeadline?: string;
   organizerId?: string;
   clauses: Array<{

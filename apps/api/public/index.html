@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="theme-color" content="#2563EB">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -549,7 +552,13 @@
       <div class="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-luma space-y-4">
         
         <div class="space-y-2">
-          <label class="text-xs font-bold text-slate-700 uppercase tracking-wider block">Liên kết bài viết Facebook</label>
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider block">Liên kết bài viết Facebook</label>
+            <button type="button" onclick="toggleManualContentBox()" class="text-[11px] font-semibold text-blue-600 hover:underline flex items-center space-x-1">
+              <i class="ph-bold ph-pencil-simple text-xs"></i>
+              <span id="btnManualContentToggleText">Dán trực tiếp nội dung bài viết</span>
+            </button>
+          </div>
           <div class="relative flex items-center rounded-2xl border border-slate-200 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-100 transition-all bg-slate-50/50 p-1.5">
             <div class="pl-3 pr-2 text-blue-600 flex items-center pointer-events-none">
               <i class="ph-bold ph-facebook-logo text-xl"></i>
@@ -563,16 +572,38 @@
               <i class="ph-bold ph-sparkle text-sm"></i>
             </button>
           </div>
+
+          <!-- Optional Manual Content Input (Dành cho các bài viết bị Facebook chặn crawler) -->
+          <div id="manualContentBox" class="hidden pt-2 space-y-1.5 transition-all">
+            <label class="text-[11px] font-semibold text-slate-600 flex items-center justify-between">
+              <span>Nội dung bài viết (Tự động trích xuất hoặc dán thủ công nếu bài bị ẩn):</span>
+              <span class="text-slate-400 font-normal">Hỗ trợ nhận diện tự động ảnh Markdown</span>
+            </label>
+            <textarea id="manualContentInput" rows="4"
+              placeholder="Dán toàn bộ nội dung bài viết Facebook hoặc kèm link ảnh markdown ![Image](...) vào đây nếu Facebook chặn cào..."
+              class="w-full bg-slate-50/70 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition font-medium"></textarea>
+          </div>
         </div>
 
         <!-- Sample Link Pill -->
-        <div class="flex items-center justify-between text-xs pt-1">
+        <div class="flex flex-wrap items-center justify-between text-xs pt-1 gap-2">
           <span class="text-slate-400 font-medium">Hoặc thử với bài mẫu:</span>
-          <button onclick="setRealLink()"
-            class="px-3 py-1 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold transition text-xs flex items-center space-x-1">
-            <span>Talkshow Hạt Giống Đỏ (Đoàn khoa Địa chất)</span>
-            <i class="ph-bold ph-arrow-right text-[10px]"></i>
-          </button>
+            <button onclick="setUpraceLink()"
+              class="px-2.5 py-1 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold transition text-[11px] flex items-center space-x-1">
+              <span>Đường chạy UPRACE (Phòng CTSV / Cấp Trường)</span>
+              <i class="ph-bold ph-arrow-right text-[10px]"></i>
+            </button>
+            <button onclick="setYouthLink()"
+              class="px-2.5 py-1 rounded-full bg-violet-50 hover:bg-violet-100 text-violet-700 font-semibold transition text-[11px] flex items-center space-x-1">
+              <span>Bật Tư Duy Số (NVHSV)</span>
+              <i class="ph-bold ph-arrow-right text-[10px]"></i>
+            </button>
+            <button onclick="setRealLink()"
+              class="px-2.5 py-1 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold transition text-[11px] flex items-center space-x-1">
+              <span>Hạt Giống Đỏ (Khoa Địa chất / CS2)</span>
+              <i class="ph-bold ph-arrow-right text-[10px]"></i>
+            </button>
+          </div>
         </div>
 
       </div>
@@ -586,16 +617,41 @@
       <!-- Result Card: Luma Event Details Preview -->
       <div id="ingestResult" class="hidden bg-white rounded-3xl border border-slate-200/90 shadow-luma-card overflow-hidden transition-all duration-300">
         
-        <!-- Poster Frame -->
-        <div id="posterContainer" class="hidden relative w-full h-64 sm:h-72 bg-slate-100 overflow-hidden group">
-          <img id="eventPosterImg" src="" alt="Event Poster" referrerpolicy="no-referrer"
-            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102">
-          <div class="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent"></div>
-          <div class="absolute bottom-4 left-5 right-5 flex items-end justify-between text-white">
-            <span class="px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md text-[11px] font-medium border border-white/20">
-              Poster chính thức
+        <!-- Instagram-style Multi-Image Carousel Frame (Matches natural aspect ratio & swipeable like Instagram) -->
+        <div id="posterContainer" class="hidden relative w-full bg-slate-950 flex flex-col items-center justify-center overflow-hidden group select-none">
+          <!-- Background Blurred Glow for Vertical/Square Posters -->
+          <div id="posterBackdropBlur" class="absolute inset-0 bg-cover bg-center filter blur-2xl opacity-35 scale-110 pointer-events-none transition-all duration-700"></div>
+          
+          <!-- Slide Track -->
+          <div id="carouselTrack" class="relative z-10 w-full flex transition-transform duration-300 ease-out">
+            <!-- Slides injected dynamically via JavaScript -->
+          </div>
+
+          <!-- Navigation Arrow: Prev -->
+          <button id="carouselBtnPrev" onclick="carouselPrevSlide(event)" type="button"
+            class="hidden absolute left-3 top-1/2 -translate-y-1/2 z-30 w-9 h-9 rounded-full bg-black/60 hover:bg-black/85 text-white backdrop-blur-md flex items-center justify-center transition shadow-lg active:scale-90 border border-white/20">
+            <i class="ph-bold ph-caret-left text-lg"></i>
+          </button>
+
+          <!-- Navigation Arrow: Next -->
+          <button id="carouselBtnNext" onclick="carouselNextSlide(event)" type="button"
+            class="hidden absolute right-3 top-1/2 -translate-y-1/2 z-30 w-9 h-9 rounded-full bg-black/60 hover:bg-black/85 text-white backdrop-blur-md flex items-center justify-center transition shadow-lg active:scale-90 border border-white/20">
+            <i class="ph-bold ph-caret-right text-lg"></i>
+          </button>
+
+          <!-- Overlaid Info Badges & Carousel Dots (Instagram style) -->
+          <div class="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4 sm:p-5 flex items-end justify-between pointer-events-none">
+            <span class="px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md text-white text-[11px] font-medium border border-white/20 shadow-xs flex items-center">
+              <i class="ph-bold ph-images text-xs mr-1 text-blue-400"></i>
+              <span id="carouselCounterBadge">1 / 1</span>
             </span>
-            <span id="cleanHashTag" class="text-[10px] font-mono text-slate-300 bg-black/40 backdrop-blur-md px-2 py-0.5 rounded"></span>
+
+            <!-- Instagram Centered Dots -->
+            <div id="carouselDots" class="hidden pointer-events-auto flex items-center space-x-1.5 py-1 px-2.5 rounded-full bg-black/40 backdrop-blur-md">
+              <!-- Dots injected dynamically -->
+            </div>
+
+            <span id="cleanHashTag" class="text-[10px] font-mono text-slate-300 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded border border-white/10"></span>
           </div>
         </div>
 
@@ -615,33 +671,89 @@
             <h3 id="eventTitle" class="text-xl font-bold text-slate-900 leading-snug"></h3>
           </div>
 
-          <!-- Luma Date & Location Info Row -->
-          <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200/70 space-y-3">
-            <div class="flex items-center space-x-3 text-xs text-slate-700">
-              <div class="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-blue-600 flex-shrink-0">
-                <i class="ph-bold ph-calendar-blank text-base"></i>
+          <!-- Structured Event Info Grid (AI & Extraction Layer) -->
+          <div class="space-y-3 text-xs">
+            <!-- Row 1: Hạn chót & Thời gian tổ chức (2 cột) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <!-- Card 1: Hạn chót đăng ký -->
+              <div class="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/80 flex items-start space-x-3">
+                <div class="w-8 h-8 rounded-xl bg-white border border-slate-200/90 flex items-center justify-center text-amber-600 flex-shrink-0 shadow-xs">
+                  <i class="ph-bold ph-hourglass-medium text-base"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <span class="font-bold block text-slate-800 text-[11px] uppercase tracking-wider">Hạn chót đăng ký</span>
+                  <span id="eventDeadline" class="text-slate-700 font-semibold mt-0.5 block truncate">Đang cập nhật</span>
+                </div>
               </div>
-              <div>
-                <span class="font-semibold block text-slate-900">Hạn chót đăng ký</span>
-                <span id="eventDeadline" class="text-slate-500 font-medium">Đang cập nhật</span>
+
+              <!-- Card 2: Ngày & Giờ diễn ra -->
+              <div class="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/80 flex items-start space-x-3">
+                <div class="w-8 h-8 rounded-xl bg-white border border-slate-200/90 flex items-center justify-center text-blue-600 flex-shrink-0 shadow-xs">
+                  <i class="ph-bold ph-calendar-blank text-base"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <span class="font-bold block text-slate-800 text-[11px] uppercase tracking-wider">Thời gian tổ chức</span>
+                  <span id="eventDateTime" class="text-slate-700 font-semibold mt-0.5 block truncate">Đang cập nhật</span>
+                </div>
               </div>
             </div>
 
-            <div class="flex items-center space-x-3 text-xs text-slate-700">
-              <div class="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-blue-600 flex-shrink-0">
+            <!-- Row 2: Địa điểm tổ chức (Box ngang dài toàn bộ chiều rộng, hỗ trợ wrap text khi tên dài) -->
+            <div class="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/80 flex items-start space-x-3 w-full">
+              <div class="w-8 h-8 rounded-xl bg-white border border-slate-200/90 flex items-center justify-center text-rose-600 flex-shrink-0 shadow-xs mt-0.5">
+                <i class="ph-bold ph-map-pin text-base"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <span class="font-bold block text-slate-800 text-[11px] uppercase tracking-wider">Địa điểm tổ chức</span>
+                <p id="eventLocation" class="text-slate-700 font-medium mt-0.5 break-words leading-relaxed text-xs sm:text-sm">Đang cập nhật</p>
+              </div>
+            </div>
+
+            <!-- Row 3: Liên kết sự kiện & Form đăng ký -->
+            <div class="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/80 flex items-start space-x-3 w-full">
+              <div class="w-8 h-8 rounded-xl bg-white border border-slate-200/90 flex items-center justify-center text-emerald-600 flex-shrink-0 shadow-xs">
                 <i class="ph-bold ph-link text-base"></i>
               </div>
-              <div class="truncate">
-                <span class="font-semibold block text-slate-900">Link bài viết gốc</span>
-                <span id="cleanUrlText" class="text-blue-600 font-mono text-[11px] truncate block"></span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold block text-slate-800 text-[11px] uppercase tracking-wider">Liên kết sự kiện</span>
+                  <button type="button" onclick="copyCleanUrl()" class="text-[10px] text-blue-600 font-bold hover:underline flex items-center space-x-0.5">
+                    <i class="ph-bold ph-copy text-xs"></i>
+                    <span id="copyLinkText">Sao chép link</span>
+                  </button>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 mt-1.5">
+                  <a id="cleanUrlLink" href="#" target="_blank"
+                    class="text-blue-600 font-mono text-[11px] truncate block hover:underline max-w-[280px] sm:max-w-md">
+                    https://facebook.com/...
+                  </a>
+                  <a id="regFormBtn" href="#" target="_blank"
+                    class="hidden px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold shadow-xs whitespace-nowrap flex items-center space-x-1">
+                    <i class="ph-bold ph-arrow-square-out text-xs"></i>
+                    <span>Mở Form Đăng ký</span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Caption Text with Expand -->
-          <div>
-            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Mô tả sự kiện</span>
-            <p id="eventDesc" class="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto pr-2 bg-slate-50/50 p-4 rounded-2xl border border-slate-100"></p>
+          <!-- Caption Text with Facebook-style "Xem thêm / Ẩn bớt" -->
+          <div class="bg-slate-50/70 p-4 sm:p-5 rounded-2xl border border-slate-200/80">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-1.5">
+                <i class="ph-bold ph-article text-blue-600 text-sm"></i>
+                <span>Nội dung bài viết</span>
+              </span>
+            </div>
+            <div class="relative">
+              <p id="eventDesc" class="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line break-words line-clamp-4 transition-all duration-300"></p>
+              <div id="descFadeOverlay" class="hidden absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-slate-50 to-transparent pointer-events-none"></div>
+            </div>
+            <button id="btnToggleDesc" onclick="toggleEventDescription()" type="button"
+              class="hidden mt-2 text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center space-x-1 focus:outline-none transition active:scale-95">
+              <span id="btnToggleDescText">Xem thêm</span>
+              <i id="btnToggleDescIcon" class="ph-bold ph-caret-down text-xs"></i>
+            </button>
           </div>
 
           <!-- Synchronized Filter Metadata Configuration (Phân loại sự kiện chuẩn HCMUS) -->
@@ -651,7 +763,7 @@
                 <i class="ph-bold ph-faders text-sm text-blue-600"></i>
                 <span>Phân loại & Gán nhãn bộ lọc (Khuyến nghị chuẩn HCMUS)</span>
               </span>
-              <span class="text-[10px] text-blue-600 font-semibold bg-white px-2 py-0.5 rounded-full border border-blue-200">
+              <span class="text-[10px] text-blue-600 font-semibold bg-white px-2 py-0.5 rounded-full border border-blue-200 shadow-xs">
                 Đồng bộ tự động
               </span>
             </div>
@@ -708,36 +820,38 @@
             </div>
           </div>
 
-          <!-- Action Buttons (Luma Style) -->
-          <div class="pt-2 border-t border-slate-100 space-y-2.5">
-            <div class="grid grid-cols-2 gap-3">
+          <!-- Clean Streamlined Action Layout (Nhóm rõ ràng: Hành động chính & Công cụ hỗ trợ) -->
+          <div class="pt-3 border-t border-slate-100 space-y-3">
+            <!-- Row 1: Primary Actions (Công bố sự kiện nổi bật & Lưu vào sổ tay) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <button id="btnPublishEvent" onclick="handlePublishEvent()"
-                class="py-3 px-4 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-2xl font-bold text-xs sm:text-sm transition shadow-sm flex items-center justify-center space-x-1.5">
-                <i class="ph-bold ph-paper-plane-tilt"></i>
+                class="py-3 px-5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-2xl font-bold text-xs sm:text-sm transition shadow-sm hover:shadow flex items-center justify-center space-x-2">
+                <i class="ph-bold ph-paper-plane-tilt text-base"></i>
                 <span>Công bố sự kiện</span>
               </button>
 
               <button id="btnBookmarkEvent" onclick="handleBookmarkCurrent()"
-                class="py-3 px-4 bg-slate-900 hover:bg-slate-800 active:scale-98 text-white rounded-2xl font-bold text-xs sm:text-sm transition shadow-sm flex items-center justify-center space-x-1.5">
-                <i class="ph-bold ph-bookmark-simple"></i>
+                class="py-3 px-5 bg-slate-900 hover:bg-slate-800 active:scale-98 text-white rounded-2xl font-bold text-xs sm:text-sm transition shadow-sm hover:shadow flex items-center justify-center space-x-2">
+                <i class="ph-bold ph-bookmark-simple text-base"></i>
                 <span>Lưu Sổ tay ĐRL</span>
               </button>
             </div>
 
-            <!-- Google Calendar Reminder Action Button -->
-            <button type="button" onclick="handleGoogleCalendarFromIngest()"
-              class="w-full py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center space-x-2">
-              <i class="ph-bold ph-calendar-plus text-base text-emerald-600"></i>
-              <span>Thêm lịch nhắc hẹn vào Google Calendar</span>
-            </button>
+            <!-- Row 2: Secondary Quick Actions (Nhắc hẹn Google Calendar & Mở Facebook bảo toàn KPI) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button type="button" onclick="handleGoogleCalendarFromIngest()"
+                class="py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100/90 active:scale-98 text-emerald-800 border border-emerald-200/90 rounded-2xl font-semibold text-xs transition flex items-center justify-center space-x-2">
+                <i class="ph-bold ph-calendar-plus text-base text-emerald-600"></i>
+                <span>Thêm vào Google Calendar</span>
+              </button>
 
-            <!-- Outbound FB Button to Preserve 100% Student Club KPI -->
-            <a id="btnFbDeepLink" href="#" target="_blank" onclick="trackOutboundClick()"
-              class="w-full py-3 px-4 bg-[#1877F2] hover:bg-blue-600 active:scale-98 text-white rounded-2xl font-semibold text-xs sm:text-sm transition shadow-sm flex items-center justify-center space-x-2">
-              <i class="ph-bold ph-facebook-logo text-lg"></i>
-              <span>Mở bài viết trong Facebook App (Bảo toàn KPI CLB)</span>
-              <i class="ph-bold ph-arrow-square-out text-sm"></i>
-            </a>
+              <a id="btnFbDeepLink" href="#" target="_blank" onclick="trackOutboundClick()"
+                class="py-2.5 px-4 bg-slate-100 hover:bg-slate-200/80 active:scale-98 text-slate-800 border border-slate-200 rounded-2xl font-semibold text-xs transition flex items-center justify-center space-x-2 group">
+                <i class="ph-bold ph-facebook-logo text-base text-[#1877F2]"></i>
+                <span>Mở bài gốc Facebook</span>
+                <i class="ph-bold ph-arrow-square-out text-xs text-slate-400 group-hover:text-slate-700"></i>
+              </a>
+            </div>
           </div>
 
         </div>
@@ -1051,6 +1165,196 @@
   <!-- ==================== FRONTEND JAVASCRIPT LOGIC ==================== -->
   <script>
     let currentIngestData = null;
+    let isDescExpanded = false;
+
+    function setupEventDescription(fullText) {
+      const descEl = document.getElementById('eventDesc');
+      const toggleBtn = document.getElementById('btnToggleDesc');
+      const fadeOverlay = document.getElementById('descFadeOverlay');
+      const toggleText = document.getElementById('btnToggleDescText');
+      const toggleIcon = document.getElementById('btnToggleDescIcon');
+
+      if (!descEl) return;
+      descEl.innerText = fullText;
+      isDescExpanded = false;
+
+      // Reset to collapsed state
+      descEl.classList.remove('line-clamp-none');
+      descEl.classList.add('line-clamp-4');
+
+      if (toggleText) toggleText.innerText = 'Xem thêm';
+      if (toggleIcon) toggleIcon.className = 'ph-bold ph-caret-down text-xs';
+
+      // Check if text is long enough to warrant "Xem thêm"
+      // If text is short (< 180 chars and < 4 lines), hide toggle button
+      if (fullText.length > 200 || (fullText.match(/\n/g) || []).length > 3) {
+        if (toggleBtn) toggleBtn.classList.remove('hidden');
+        if (fadeOverlay) fadeOverlay.classList.remove('hidden');
+      } else {
+        if (toggleBtn) toggleBtn.classList.add('hidden');
+        if (fadeOverlay) fadeOverlay.classList.add('hidden');
+      }
+    }
+
+    function toggleEventDescription() {
+      const descEl = document.getElementById('eventDesc');
+      const toggleText = document.getElementById('btnToggleDescText');
+      const toggleIcon = document.getElementById('btnToggleDescIcon');
+      const fadeOverlay = document.getElementById('descFadeOverlay');
+
+      if (!descEl) return;
+      isDescExpanded = !isDescExpanded;
+
+      if (isDescExpanded) {
+        descEl.classList.remove('line-clamp-4');
+        descEl.classList.add('line-clamp-none');
+        if (toggleText) toggleText.innerText = 'Ẩn bớt';
+        if (toggleIcon) toggleIcon.className = 'ph-bold ph-caret-up text-xs';
+        if (fadeOverlay) fadeOverlay.classList.add('hidden');
+      } else {
+        descEl.classList.remove('line-clamp-none');
+        descEl.classList.add('line-clamp-4');
+        if (toggleText) toggleText.innerText = 'Xem thêm';
+        if (toggleIcon) toggleIcon.className = 'ph-bold ph-caret-down text-xs';
+        if (fadeOverlay) fadeOverlay.classList.remove('hidden');
+      }
+    }
+
+    function copyCleanUrl() {
+      if (!currentIngestData || !currentIngestData.cleanUrl) return;
+      navigator.clipboard.writeText(currentIngestData.cleanUrl).then(() => {
+        const textEl = document.getElementById('copyLinkText');
+        if (textEl) {
+          textEl.innerText = 'Đã chép!';
+          setTimeout(() => { textEl.innerText = 'Sao chép'; }, 2000);
+        }
+      });
+    }
+
+    // ==================== INSTAGRAM-STYLE MULTI-IMAGE CAROUSEL ====================
+    let carouselImages = [];
+    let currentCarouselIndex = 0;
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    function setupCarouselImages(images) {
+      carouselImages = (images && images.length > 0) ? images : [];
+      currentCarouselIndex = 0;
+
+      const container = document.getElementById('posterContainer');
+      const track = document.getElementById('carouselTrack');
+      const prevBtn = document.getElementById('carouselBtnPrev');
+      const nextBtn = document.getElementById('carouselBtnNext');
+      const counterBadge = document.getElementById('carouselCounterBadge');
+      const dotsContainer = document.getElementById('carouselDots');
+      const backdropBlur = document.getElementById('posterBackdropBlur');
+
+      if (!container || !track) return;
+
+      if (carouselImages.length === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+
+      // Inject Slides into Track
+      track.innerHTML = carouselImages.map((imgSrc, idx) => `
+        <div class="w-full flex-shrink-0 flex items-center justify-center p-2 sm:p-4">
+          <img src="${imgSrc}" alt="Ảnh ${idx + 1}" referrerpolicy="no-referrer"
+            class="max-h-[560px] w-auto max-w-full object-contain rounded-2xl shadow-md transition-transform duration-300">
+        </div>
+      `).join('');
+
+      // Setup Dots
+      if (carouselImages.length > 1) {
+        prevBtn.classList.remove('hidden');
+        nextBtn.classList.remove('hidden');
+        dotsContainer.classList.remove('hidden');
+        dotsContainer.innerHTML = carouselImages.map((_, idx) => `
+          <button type="button" onclick="carouselGoToSlide(${idx}, event)"
+            class="w-2 h-2 rounded-full transition-all duration-300 ${idx === 0 ? 'bg-white scale-125' : 'bg-white/40 hover:bg-white/70'}">
+          </button>
+        `).join('');
+      } else {
+        prevBtn.classList.add('hidden');
+        nextBtn.classList.add('hidden');
+        dotsContainer.classList.add('hidden');
+      }
+
+      // Add touch swipe listeners
+      track.ontouchstart = (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      };
+      track.ontouchend = (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleCarouselSwipe();
+      };
+
+      updateCarouselView();
+    }
+
+    function handleCarouselSwipe() {
+      const diff = touchEndX - touchStartX;
+      if (diff > 45) {
+        // Swiped right -> prev slide
+        carouselPrevSlide();
+      } else if (diff < -45) {
+        // Swiped left -> next slide
+        carouselNextSlide();
+      }
+    }
+
+    function updateCarouselView() {
+      const track = document.getElementById('carouselTrack');
+      const counterBadge = document.getElementById('carouselCounterBadge');
+      const dotsContainer = document.getElementById('carouselDots');
+      const backdropBlur = document.getElementById('posterBackdropBlur');
+
+      if (track) {
+        track.style.transform = `translateX(-${currentCarouselIndex * 100}%)`;
+      }
+
+      if (counterBadge) {
+        counterBadge.innerText = `${currentCarouselIndex + 1} / ${carouselImages.length}`;
+      }
+
+      if (backdropBlur && carouselImages[currentCarouselIndex]) {
+        backdropBlur.style.backgroundImage = `url('${carouselImages[currentCarouselIndex]}')`;
+      }
+
+      // Update active dot
+      if (dotsContainer) {
+        const dotButtons = dotsContainer.querySelectorAll('button');
+        dotButtons.forEach((dot, idx) => {
+          if (idx === currentCarouselIndex) {
+            dot.className = "w-2.5 h-2.5 rounded-full bg-white scale-125 transition-all duration-300 shadow-sm";
+          } else {
+            dot.className = "w-2 h-2 rounded-full bg-white/40 hover:bg-white/70 transition-all duration-300";
+          }
+        });
+      }
+    }
+
+    function carouselPrevSlide(e) {
+      if (e) e.stopPropagation();
+      if (carouselImages.length <= 1) return;
+      currentCarouselIndex = (currentCarouselIndex - 1 + carouselImages.length) % carouselImages.length;
+      updateCarouselView();
+    }
+
+    function carouselNextSlide(e) {
+      if (e) e.stopPropagation();
+      if (carouselImages.length <= 1) return;
+      currentCarouselIndex = (currentCarouselIndex + 1) % carouselImages.length;
+      updateCarouselView();
+    }
+
+    function carouselGoToSlide(idx, e) {
+      if (e) e.stopPropagation();
+      currentCarouselIndex = idx;
+      updateCarouselView();
+    }
 
     // Navigation Tabs
     function switchTab(tabId) {
@@ -1070,14 +1374,60 @@
       if (tabId === 'tracker') loadTrackerList();
     }
 
+    function setUpraceLink() {
+      document.getElementById('fbUrlInput').value = "https://www.facebook.com/share/p/19fv7sjD8F/";
+      handleIngestPreview();
+    }
+
     function setRealLink() {
       document.getElementById('fbUrlInput').value = "https://www.facebook.com/photo.php?fbid=1526825616138522&set=a.545830524238041&type=3&rdid=RQon08wjHXTv95q0&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1MLQ2Z8PdB#";
       handleIngestPreview();
     }
 
-    async function handleIngestPreview() {
-      const url = document.getElementById('fbUrlInput').value.trim();
+    function setLibraryLink() {
+      document.getElementById('fbUrlInput').value = "https://www.facebook.com/share/p/19UK7GvF9g/";
+      handleIngestPreview();
+    }
+
+    function setYouthLink() {
+      document.getElementById('fbUrlInput').value = "https://www.facebook.com/photo/?fbid=1518627976956831&set=pcb.1518629756956653";
+      // Chạy bóc tách đồng thời kèm payload content nếu cào trực tiếp gặp Facebook rate limit
+      const sampleText = `[NGÀY HỘI CHÀO MỪNG NĂM HỌC MỚI 2026 - 2027] BẬT TƯ DUY SỐ - MỞ LỘ TRÌNH XANH\n\nNgày hội Chào mừng năm học mới 2026 - 2027 với chủ đề “Bật tư duy số - Mở lộ trình xanh” sẽ chính thức diễn ra tại Trường THPT Phước Bửu, mang đến không gian trải nghiệm đa dạng, nơi các bạn học sinh được khám phá tri thức, phát huy tư duy sáng tạo và kết nối cùng bạn bè.\n\nCÙNG KHÁM PHÁ NHỮNG HOẠT ĐỘNG NỔI BẬT TẠI NGÀY HỘI!\n\n05 TRẠM SÓNG TRẢI NGHIỆM\n\n02 WORKSHOP CHUYÊN ĐỀ\n\nCUỘC THI RUNG CHUÔNG VÀNG\n\nGIAN HÀNG - QUÀ TẶNG - NHIỀU TRẢI NGHIỆM THÚ VỊ\n\nTHÔNG TIN NGÀY HỘI\n\nThời gian: Chủ nhật, ngày 11/10/2026\n\nĐịa điểm: Trường THPT Phước Bửu (Xã Hồ Tràm, TP. Hồ Chí Minh)\n\n#ChaoMungNamHocMoi2026#BatTuDuySoMoLoTrinhXanh#NhaVanhoaSinhvien#NVHSV#NgayHoiHocSinhSinhVien`;
+      
+      const sampleImages = [
+        "https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=1518627976956831",
+        "https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=1518627150290247",
+        "https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=1518628216956807",
+        "https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=1518627053623590",
+        "https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=1518627083623587"
+      ];
+      
+      handleIngestPreview({
+        url: "https://www.facebook.com/photo/?fbid=1518627976956831&set=pcb.1518629756956653",
+        content: sampleText,
+        posterImageUrl: sampleImages[0]
+      });
+    }
+
+    function toggleManualContentBox() {
+      const box = document.getElementById('manualContentBox');
+      const text = document.getElementById('btnManualContentToggleText');
+      if (!box) return;
+      const isHidden = box.classList.contains('hidden');
+      if (isHidden) {
+        box.classList.remove('hidden');
+        if (text) text.innerText = 'Ẩn ô dán nội dung';
+      } else {
+        box.classList.add('hidden');
+        if (text) text.innerText = 'Dán trực tiếp nội dung bài viết';
+      }
+    }
+
+    async function handleIngestPreview(customPayload) {
+      const url = customPayload?.url || document.getElementById('fbUrlInput').value.trim();
       if (!url) return;
+
+      const manualContent = document.getElementById('manualContentInput')?.value?.trim();
 
       const btn = document.getElementById('btnIngest');
       const loading = document.getElementById('ingestLoading');
@@ -1089,10 +1439,14 @@
       resultCard.classList.add('hidden');
 
       try {
+        const payload = customPayload || {
+          url,
+          content: manualContent || undefined,
+        };
         const res = await fetch('/api/v1/events/ingest-preview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
         currentIngestData = data;
@@ -1101,20 +1455,90 @@
         resultCard.classList.remove('hidden');
 
         document.getElementById('cleanHashTag').innerText = (data.cleanUrlHash || '').substring(0, 10);
-        document.getElementById('cleanUrlText').innerText = data.cleanUrl;
+        
+        // Link bài viết gốc & Form đăng ký
+        const cleanLinkEl = document.getElementById('cleanUrlLink');
+        if (cleanLinkEl) {
+          cleanLinkEl.href = data.cleanUrl;
+          cleanLinkEl.innerText = data.cleanUrl;
+        }
+
+        const regBtnEl = document.getElementById('regFormBtn');
+        if (regBtnEl) {
+          if (data.extractedRegistrationLink) {
+            regBtnEl.href = data.extractedRegistrationLink;
+            regBtnEl.classList.remove('hidden');
+          } else {
+            regBtnEl.classList.add('hidden');
+          }
+        }
+
         document.getElementById('eventTitle').innerText = data.title;
-        document.getElementById('eventDesc').innerText = data.description || 'Không có mô tả chi tiết';
         document.getElementById('eventDeadline').innerText = data.suggestedDeadline || 'Đang cập nhật';
 
-        // Poster image
-        const posterContainer = document.getElementById('posterContainer');
-        const posterImg = document.getElementById('eventPosterImg');
-        if (data.posterImageUrl) {
-          posterImg.src = data.posterImageUrl;
-          posterContainer.classList.remove('hidden');
-        } else {
-          posterContainer.classList.add('hidden');
+        // Ngày & Giờ diễn ra
+        const dtEl = document.getElementById('eventDateTime');
+        if (dtEl) {
+          if (data.extractedDate && data.extractedTime) {
+            dtEl.innerText = `${data.extractedTime} • ${data.extractedDate}`;
+          } else if (data.extractedDate) {
+            dtEl.innerText = data.extractedDate;
+          } else if (data.extractedTime) {
+            dtEl.innerText = data.extractedTime;
+          } else {
+            dtEl.innerText = 'Đang cập nhật';
+          }
         }
+
+        // Địa điểm tổ chức
+        const locEl = document.getElementById('eventLocation');
+        if (locEl) {
+          locEl.innerText = data.extractedLocation || 'Đang cập nhật';
+          locEl.title = data.extractedLocation || 'Đang cập nhật';
+        }
+
+        // Tự động phân loại chính xác các trường dropdown theo trí thông minh AI & Chuẩn HCMUS
+        const facultySelect = document.getElementById('publishFaculty');
+        if (facultySelect && data.suggestedFaculty) {
+          facultySelect.value = data.suggestedFaculty;
+        }
+
+        const orgLevelSelect = document.getElementById('publishOrgLevel');
+        if (orgLevelSelect && data.suggestedOrgLevel) {
+          orgLevelSelect.value = data.suggestedOrgLevel;
+        }
+
+        const campusSelect = document.getElementById('publishCampus');
+        if (campusSelect) {
+          if (data.suggestedCampus) {
+            campusSelect.value = data.suggestedCampus;
+          } else if (data.extractedLocation) {
+            const locLow = data.extractedLocation.toLowerCase();
+            if (locLow.includes('đông hoà') || locLow.includes('dĩ an') || locLow.includes('linh trung') || locLow.includes('f104')) {
+              campusSelect.value = 'cs2';
+            } else if (locLow.includes('nguyễn văn cừ') || locLow.includes('quận 5') || locLow.includes('q5')) {
+              campusSelect.value = 'cs1';
+            } else if (locLow.includes('online') || locLow.includes('zoom') || locLow.includes('teams')) {
+              campusSelect.value = 'online';
+            } else {
+              campusSelect.value = 'external';
+            }
+          }
+        }
+
+        const formatSelect = document.getElementById('publishFormat');
+        if (formatSelect && data.suggestedFormat) {
+          formatSelect.value = data.suggestedFormat;
+        }
+
+        // Description with Facebook-style "Xem thêm / Ẩn bớt"
+        setupEventDescription(data.description || 'Không có mô tả chi tiết');
+
+        // Poster image carousel (Instagram-style Multi-Image Carousel with Swipe and Dots)
+        const imagesList = (data.posterImages && data.posterImages.length > 0)
+          ? data.posterImages
+          : (data.posterImageUrl ? [data.posterImageUrl] : []);
+        setupCarouselImages(imagesList);
 
         // Clause
         if (data.suggestedClauses && data.suggestedClauses.length > 0) {
@@ -1156,6 +1580,7 @@
             originalPostUrl: currentIngestData.cleanUrl,
             cleanUrlHash: currentIngestData.cleanUrlHash,
             posterImageUrl: currentIngestData.posterImageUrl,
+            images: currentIngestData.posterImages || (currentIngestData.posterImageUrl ? [currentIngestData.posterImageUrl] : []),
             registrationDeadline: currentIngestData.suggestedDeadline,
             faculty,
             orgLevel,
@@ -1863,10 +2288,18 @@
                 <img src="${item.posterImageUrl}" referrerpolicy="no-referrer" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-103">
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950/50 via-transparent to-transparent"></div>
                 
-                <!-- DRL Badge -->
-                <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-[10px] font-extrabold text-blue-600 shadow-sm">
-                  +${item.pointsAwarded || 5}đ ĐRL
-                </span>
+                <!-- DRL Badge & Multi-Photo Badge -->
+                <div class="absolute top-3 left-3 flex items-center space-x-1.5 z-10">
+                  <span class="px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md text-[10px] font-extrabold text-blue-600 shadow-sm">
+                    +${item.pointsAwarded || 5}đ ĐRL
+                  </span>
+                  ${(item.images && item.images.length > 1) ? `
+                    <span class="px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-bold text-white shadow-sm flex items-center space-x-1">
+                      <i class="ph-bold ph-images text-xs text-blue-400"></i>
+                      <span>${item.images.length}</span>
+                    </span>
+                  ` : ''}
+                </div>
 
                 <!-- Quick Like / Heart Button (Top Right) -->
                 <button type="button"
@@ -2062,19 +2495,51 @@
     }
 
     // ==================== GOOGLE CALENDAR SCHEDULE & REMINDER ====================
-    function generateGoogleCalendarUrl(title, deadlineStr, description, campus) {
+    function generateGoogleCalendarUrl(title, deadlineStr, description, campus, explicitDate, explicitTime, explicitLocation) {
       const locationMap = {
         cs1: 'Cơ sở 1, 227 Nguyễn Văn Cừ, Quận 5, TP.HCM',
         cs2: 'Cơ sở 2, Khu ĐHQG-HCM, Linh Trung - Dĩ An, Bình Dương',
         online: 'Trực tuyến (Online / MS Teams)',
         external: 'Địa điểm tổ chức ngoài trường'
       };
-      const location = locationMap[campus] || campus || 'Trường ĐH Khoa học Tự nhiên, ĐHQG-HCM';
+      const location = explicitLocation || locationMap[campus] || campus || 'Trường ĐH Khoa học Tự nhiên, ĐHQG-HCM';
 
       let startDate = new Date();
       let endDate = new Date(startDate.getTime() + 2 * 3600000); // 2 hours duration by default
 
-      if (deadlineStr) {
+      // Nếu có ngày cụ thể (ví dụ 11/10/2026) và giờ (08H00 - 10H00)
+      if (explicitDate) {
+        const parts = explicitDate.split(/[./\-]/);
+        if (parts.length === 3) {
+          const day = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10) - 1;
+          const year = parseInt(parts[2], 10);
+
+          let startHour = 8;
+          let startMin = 0;
+          let endHour = 10;
+          let endMin = 0;
+
+          if (explicitTime) {
+            const timeMatches = explicitTime.match(/(\d{1,2})[hH:](\d{0,2})/g);
+            if (timeMatches && timeMatches.length >= 1) {
+              const [h1, m1] = timeMatches[0].toLowerCase().split(/[h:]/);
+              startHour = parseInt(h1, 10);
+              startMin = parseInt(m1 || '0', 10);
+            }
+            if (timeMatches && timeMatches.length >= 2) {
+              const [h2, m2] = timeMatches[1].toLowerCase().split(/[h:]/);
+              endHour = parseInt(h2, 10);
+              endMin = parseInt(m2 || '0', 10);
+            } else {
+              endHour = startHour + 2;
+            }
+          }
+
+          startDate = new Date(year, month, day, startHour, startMin);
+          endDate = new Date(year, month, day, endHour, endMin);
+        }
+      } else if (deadlineStr) {
         const parsed = new Date(deadlineStr);
         if (!isNaN(parsed.getTime())) {
           startDate = parsed;
@@ -2100,8 +2565,8 @@
       return `https://calendar.google.com/calendar/render?${params.toString()}`;
     }
 
-    function addEventToGoogleCalendar(title, deadline, description, campus) {
-      const url = generateGoogleCalendarUrl(title, deadline, description, campus);
+    function addEventToGoogleCalendar(title, deadline, description, campus, date, time, loc) {
+      const url = generateGoogleCalendarUrl(title, deadline, description, campus, date, time, loc);
       window.open(url, '_blank');
     }
 
@@ -2112,7 +2577,10 @@
         currentIngestData.title,
         currentIngestData.suggestedDeadline,
         currentIngestData.description,
-        campus
+        campus,
+        currentIngestData.extractedDate,
+        currentIngestData.extractedTime,
+        currentIngestData.extractedLocation
       );
     }
 

@@ -12,6 +12,14 @@ export interface DetectedClause {
 export interface ParseResult {
   detectedClauses: DetectedClause[];
   extractedDeadline?: string;
+  extractedDate?: string;
+  extractedTime?: string;
+  extractedLocation?: string;
+  extractedRegistrationLink?: string;
+  suggestedFaculty?: string;
+  suggestedOrgLevel?: string;
+  suggestedCampus?: string;
+  suggestedFormat?: string;
 }
 
 @Injectable()
@@ -31,10 +39,10 @@ export class DrlClauseParserService {
     // 2. Phân loại theo 5 Nội dung của HCMUS
 
     // [Nội dung 1: Tham gia học tập & NCKH - Max 30đ]
-    // Cuộc thi học thuật (+5đ), NCKH (+15đ), CLB học thuật (+5đ), Hội thảo/Chuyên đề (+5đ)
-    if (/nội\s*dung\s*1|học\s*thuật|nghiên\s*cứu\s*khoa\s*học|nckh|seminar|hội\s*thảo|chuyên\s*đề|học\s*tập|clb\s*học\s*thuật|phòng\s*thí\s*nghiệm|ptn/i.test(normalized)) {
+    // Cuộc thi học thuật (+5đ), NCKH (+15đ), CLB học thuật (+5đ), Hội thảo/Chuyên đề (+5đ), Talkshow học thuật/tri thức (+5đ)
+    if (/nội\s*dung\s*1|học\s*thuật|nghiên\s*cứu\s*khoa\s*học|nckh|seminar|hội\s*thảo|chuyên\s*đề|học\s*tập|clb\s*học\s*thuật|phòng\s*thí\s*nghiệm|ptn|talkshow|tri\s*thức|tự\s*học|chuyển\s*đổi\s*số/i.test(normalized)) {
       let pts = explicitPoints || 5;
-      let subCategory = 'Hoạt động học thuật / Hội thảo / NCKH';
+      let subCategory = 'Hoạt động học thuật / Hội thảo / NCKH / Talkshow';
       if (/nghiên\s*cứu\s*khoa\s*học|nckh/i.test(normalized)) {
         pts = explicitPoints || 15;
         subCategory = 'Đề tài Nghiên cứu khoa học';
@@ -126,17 +134,177 @@ export class DrlClauseParserService {
       });
     }
 
-    // 3. Regex bóc tách Deadline (dd/mm/yyyy hoặc dd-mm-yyyy)
-    const deadlineRegex = /(?:hạn\s*chót(?:\s*đăng\s*ký)?|hạn\s*đăng\s*ký|deadline|đến\s*hết\s*ngày)[\s:]*([0-3]?\d[./\-][0-1]?\d[./\-]\d{4})/i;
-    const deadlineMatch = normalized.match(deadlineRegex);
+    // 3. Regex bóc tách Deadline đăng ký (dd/mm/yyyy hoặc dd-mm-yyyy hoặc dạng kèm giờ)
+    const deadlineRegex = /(?:hạn\s*chót(?:\s*đăng\s*ký)?|hạn\s*đăng\s*ký|deadline|đóng\s*link\s*đăng\s*ký|đến\s*hết\s*ngày)[\s:]*([0-2]?\d[hH:]\d{0,2}\s*(?:ngày\s*)?)?([0-3]?\d[./\-][0-1]?\d[./\-]\d{4})/i;
+    const deadlineMatch = text.match(deadlineRegex);
     let extractedDeadline: string | undefined;
-    if (deadlineMatch && deadlineMatch[1]) {
-      extractedDeadline = deadlineMatch[1];
+    if (deadlineMatch) {
+      const timePart = deadlineMatch[1] ? deadlineMatch[1].trim() + ' ' : '';
+      extractedDeadline = `${timePart}${deadlineMatch[2]}`.trim();
     }
+
+    // 4. Regex bóc tách Ngày tổ chức sự kiện (📅, 🗓️, hoặc "Thời gian: ... ngày dd/mm/yyyy", hoặc pattern ngày tháng)
+    let extractedDate: string | undefined;
+    const dateRegex = /(?:(?:\uD83D\uDCC5|\uD83D\uDDD3|thời\s*gian[\s:]+.*?|ngày\s*diễn\s*ra[\s:]*|ngày[\s:]+)\s*|[^\d]|^)([0-3]?\d[./\-][0-1]?\d[./\-]\d{4})/i;
+    const dateMatch = text.match(dateRegex);
+    if (dateMatch && dateMatch[1]) {
+      extractedDate = dateMatch[1];
+    }
+
+    // 5. Regex bóc tách Giờ tổ chức (⏰ hoặc 08H00 – 10H00, 8h00 - 11h30, v.v.)
+    let extractedTime: string | undefined;
+    const iconTimeMatch = text.match(/(?:⏰|⏱️)\s*([0-2]?\d[hH:]\d{2}(?:\s*[–\-–—]\s*[0-2]?\d[hH:]\d{2})?)/i);
+    if (iconTimeMatch && iconTimeMatch[1]) {
+      extractedTime = iconTimeMatch[1].trim();
+    } else {
+      const generalTimeMatch = text.match(/(?:bắt\s*đầu\s*lúc|thời\s*gian[\s:]+)?([0-2]?\d[hH]\d{2}\s*[–\-–—]\s*[0-2]?\d[hH]\d{2})/i);
+      if (generalTimeMatch && generalTimeMatch[1]) {
+        extractedTime = generalTimeMatch[1].trim();
+      }
+    }
+
+    // 6. Regex bóc tách Địa điểm tổ chức (📍 hoặc "Địa điểm:", "Tại...")
+    let extractedLocation: string | undefined;
+    const locationRegex = /(?:📍|địa\s*điểm[\s:]+)\s*([^\n\r]+)/i;
+    const locMatch = text.match(locationRegex);
+    if (locMatch && locMatch[1]) {
+      extractedLocation = locMatch[1]
+        .split(/[📅⏰🌱🎁🎙️💬#\(\)]/)[0]
+        .replace(/^địa\s*điểm\s*[:–\-]\s*/i, '')
+        .replace(/^[–\-:\s]+/, '')
+        .trim();
+      // Nếu có ngoặc đóng mở chi tiết, giữ nguyên nếu có ý nghĩa
+      const parenMatch = locMatch[1].match(/(.*?\(.*?\))/);
+      if (parenMatch && parenMatch[1]) {
+        extractedLocation = parenMatch[1]
+          .replace(/^địa\s*điểm\s*[:–\-]\s*/i, '')
+          .replace(/^[–\-:\s]+/, '')
+          .trim();
+      }
+    }
+
+    // 7. Regex bóc tách Link đăng ký Form (Google Form, MS Forms, bit.ly, v.v.)
+    let extractedRegistrationLink: string | undefined;
+    const regLinkRegex = /(?:đăng\s*ký\s*(?:tham\s*gia)?(?:\s*qua)?\s*link[\s:]*|link\s*đăng\s*ký[\s:]*|form\s*đăng\s*ký[\s:]*)?(https:\/\/(?:docs\.google\.com\/forms[^\s\n\r]+|forms\.gle\/[^\s\n\r]+|forms\.office\.com[^\s\n\r]+|bit\.ly\/[^\s\n\r]+))/i;
+    const regMatch = text.match(regLinkRegex);
+    if (regMatch && regMatch[1]) {
+      extractedRegistrationLink = regMatch[1].trim();
+    }
+
+    // Nếu không tìm thấy deadline nhưng có ngày tổ chức sự kiện, có thể suy luận gợi ý hạn chót trước ngày sự kiện
+    if (!extractedDeadline && extractedDate) {
+      extractedDeadline = `Trước ngày ${extractedDate}`;
+    }
+
+    // 8. Suy luận phân loại Đơn vị, Cấp tổ chức, Cơ sở và Hình thức theo chuẩn HCMUS
+    const metadata = this.inferMetadata(text, extractedLocation);
 
     return {
       detectedClauses,
       extractedDeadline,
+      extractedDate,
+      extractedTime,
+      extractedLocation,
+      extractedRegistrationLink,
+      suggestedFaculty: metadata.faculty,
+      suggestedOrgLevel: metadata.orgLevel,
+      suggestedCampus: metadata.campus,
+      suggestedFormat: metadata.format,
     };
+  }
+
+  /**
+   * Phân tích ngữ cảnh nội dung bài viết để phân loại chính xác các trường:
+   * - Khoa / Đơn vị tổ chức (faculty)
+   * - Cấp tổ chức (orgLevel: 'truong' | 'khoa' | 'clb')
+   * - Cơ sở tổ chức (campus: 'cs1' | 'cs2' | 'external' | 'online')
+   * - Hình thức (format: 'offline' | 'online' | 'hybrid')
+   */
+  private inferMetadata(text: string, extractedLocation?: string): {
+    faculty: string;
+    orgLevel: string;
+    campus: string;
+    format: string;
+  } {
+    const normalized = text.toLowerCase();
+    const locNormalized = (extractedLocation || '').toLowerCase();
+    const combined = `${normalized} ${locNormalized}`;
+
+    // --- 1. Suy luận Khoa / Đơn vị & Cấp tổ chức ---
+    let faculty = 'all';
+    let orgLevel = 'truong';
+
+    // Đơn vị trực thuộc cấp Trường hoặc ĐHQG-HCM:
+    const isCentralUnit = /thư\s*viện|trung\s*tâm\s*quản\s*lý\s*kí\s*túc\s*xá|ktxa|ktxb|phòng\s*ctsv|phòng\s*công\s*tác\s*sinh\s*viên|phòng\s*đào\s*tạo|đoàn\s*trường|hội\s*sinh\s*viên\s*trường|đhqg[-–\s]*hcm|đại\s*học\s*quốc\s*gia/i.test(normalized);
+
+    // Kiểm tra các Khoa chuyên môn
+    let matchedFaculty = '';
+    if (/địa\s*chất|khoa\s*địa|bộ\s*môn\s*địa|\bgeo\b/i.test(normalized)) {
+      matchedFaculty = 'diachat';
+    } else if (/công\s*nghệ\s*thông\s*tin|khoa\s*cntt|\bfit\b/i.test(normalized) && !combined.includes('đại học công nghệ thông tin') && !combined.includes('uit')) {
+      matchedFaculty = 'cntt';
+    } else if (/toán\s*[-–]?\s*tin|toán\s*tin|\bfmt\b/i.test(normalized)) {
+      matchedFaculty = 'toantin';
+    } else if (/vật\s*lý|vlkt|\bphys\b/i.test(normalized)) {
+      matchedFaculty = 'vatly';
+    } else if (/hóa\s*học|\bchem\b/i.test(normalized)) {
+      matchedFaculty = 'hoahoc';
+    } else if (/sinh\s*học|công\s*nghệ\s*sinh\s*học|\bfbb\b/i.test(normalized)) {
+      matchedFaculty = 'sinhhoc';
+    } else if (/môi\s*trường|\bfes\b/i.test(normalized)) {
+      matchedFaculty = 'moitruong';
+    } else if (/khoa\s*học\s*vật\s*liệu|cn\s*vật\s*liệu|\bfms\b/i.test(normalized)) {
+      matchedFaculty = 'vatlieu';
+    } else if (/điện\s*tử\s*[-–]?\s*viễn\s*thông|\bfetel\b/i.test(normalized)) {
+      matchedFaculty = 'dientu';
+    } else if (/khoa\s*học\s*liên\s*ngành|\bfis\b/i.test(normalized)) {
+      matchedFaculty = 'liennganh';
+    }
+
+    // Kiểm tra các từ khóa CLB / Đội / Nhóm sinh viên
+    const isClub = /câu\s*lạc\s*bộ|\bclb\b|đội\s*sinh\s*viên|đội\s*ctxh|nhóm\s*sinh\s*viên|\bclub\b|\bteam\b|ban\s*học\s*tập/i.test(normalized);
+
+    if (isClub) {
+      orgLevel = 'clb';
+      if (matchedFaculty) {
+        faculty = matchedFaculty;
+      }
+    } else if (matchedFaculty) {
+      faculty = matchedFaculty;
+      orgLevel = 'khoa';
+    } else if (isCentralUnit) {
+      faculty = 'all';
+      orgLevel = 'truong';
+    }
+
+    // --- 2. Suy luận Cơ sở tổ chức (Campus) ---
+    // cs1: 227 Nguyễn Văn Cừ, Quận 5
+    // cs2: Linh Trung, Thủ Đức / Đông Hòa, Dĩ An, Bình Dương
+    // external: Tổ chức ngoài trường (VD: UIT, Bách Khoa, NVH Sinh viên, Địa bàn tình nguyện...)
+    // online: MS Teams, Zoom, Google Meet
+    let campus = 'cs1';
+
+    // Kiểm tra xem có tổ chức tại trường khác hoặc ngoài trường không (VD: UIT, Bách Khoa, NVHSV, THPT Phước Bửu, Hồ Tràm, địa bàn tình nguyện...)
+    if (/thpt|trường\s*thpt|nhà\s*văn\s*hóa\s*sinh\s*viên|\bnvhsv\b|hồ\s*tràm|hội\s*trường\s*a\s*uit|trường\s*đại\s*học\s*công\s*nghệ\s*thông\s*tin|\buit\b|bách\s*khoa|\bhcmut\b|địa\s*bàn|tỉnh\s+|mái\s*ấm|nhà\s*mở|ngoài\s*trường/i.test(combined)) {
+      campus = 'external';
+    } else if (/đông\s*hoà|đông\s*hòa|dĩ\s*an|linh\s*trung|cơ\s*sở\s*2|cs2|f104|nhà\s*f|giảng\s*đường\s*1|kí\s*túc\s*xá\s*khu/i.test(combined)) {
+      campus = 'cs2';
+    } else if (/nguyễn\s*văn\s*cừ|nguyen\s*van\s*cu|quận\s*5|cơ\s*sở\s*1|cs1|giảng\s*đường\s*2|hội\s*trường\s*i/i.test(combined)) {
+      campus = 'cs1';
+    } else if (/online|trực\s*tuyến|ms\s*teams|zoom|google\s*meet/i.test(combined)) {
+      campus = 'online';
+    }
+
+    // --- 3. Suy luận Hình thức tổ chức (Format: offline / online / hybrid) ---
+    let format = 'offline';
+    if (/hybrid|kết\s*hợp\s*trực\s*tiếp\s*và\s*trực\s*tuyến|vừa\s*online\s*vừa\s*offline/i.test(combined)) {
+      format = 'hybrid';
+    } else if (/online|trực\s*tuyến|webinar|ms\s*teams|zoom/i.test(combined) && !/trực\s*tiếp|hội\s*trường|phòng/i.test(combined)) {
+      format = 'online';
+    } else {
+      format = 'offline';
+    }
+
+    return { faculty, orgLevel, campus, format };
   }
 }

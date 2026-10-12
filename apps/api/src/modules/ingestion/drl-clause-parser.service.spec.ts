@@ -59,4 +59,50 @@ describe('DrlClauseParserService (HCMUS Regulations)', () => {
     expect(nd5).toBeDefined();
     expect(nd5?.points).toBe(25);
   });
+
+  it('should extract date, time, location, registration link from real HCMUS event post', () => {
+    const text = `
+      TALK SHOW “HẠT GIỐNG ĐỎ” – KÍ ỨC, NIỀM TIN & SỰ GẠCH NỐI THẾ HỆ
+      Khi tham gia chương trình sẽ được ghi nhận hoạt động ở học kì 1.
+      📍 Địa điểm: Phòng F104, Trường Đại học Khoa học tự nhiên, ĐHQG-HCM (cơ sở Đông Hoà)
+      📅 11/10/2026
+      ⏰ 08H00 – 10H00
+      🌱 Đăng ký tham gia qua link : https://docs.google.com/forms/d/1NCQjxgOZXCWzEHwcDNuao9rlonwJ4ShS8Y4hgIpqnc8/viewform
+    `;
+    const result = service.parse(text);
+
+    expect(result.extractedDate).toBe('11/10/2026');
+    expect(result.extractedTime).toBe('08H00 – 10H00');
+    expect(result.extractedLocation).toContain('Phòng F104, Trường Đại học Khoa học tự nhiên');
+    expect(result.extractedRegistrationLink).toContain('https://docs.google.com/forms/d/1NCQjxgOZXCWzEHwcDNuao9rlonwJ4ShS8Y4hgIpqnc8/viewform');
+  });
+
+  it('should accurately infer metadata for Central unit event held at UIT (Thư viện ĐHQG)', () => {
+    const text = `
+      Thư viện Trung tâm ĐHQG-HCM phối hợp tổ chức Talkshow Kỹ năng
+      📍 Địa điểm: Hội trường A, Trường Đại học Công nghệ Thông tin (UIT)
+      Thời gian: 08:30 ngày 17/10/2026
+    `;
+    const result = service.parse(text);
+
+    expect(result.suggestedFaculty).toBe('all'); // Đơn vị chung / Cấp Trường
+    expect(result.suggestedOrgLevel).toBe('truong'); // Cấp Trường / ĐHQG-HCM
+    expect(result.suggestedCampus).toBe('external'); // Ngoài trường (UIT)
+    expect(result.suggestedFormat).toBe('offline'); // Trực tiếp
+  });
+
+  it('should accurately infer metadata for Faculty level event (Khoa Địa chất, CS2)', () => {
+    const text = `
+      Đoàn khoa Địa chất - Ban Chấp hành Liên chi hội Khoa Địa chất
+      Talkshow Hạt Giống Đỏ
+      📍 Địa điểm: Phòng F104, Cơ sở Đông Hoà, Dĩ An
+      Ngày: 11/10/2026
+    `;
+    const result = service.parse(text);
+
+    expect(result.suggestedFaculty).toBe('diachat'); // Khoa Địa chất
+    expect(result.suggestedOrgLevel).toBe('khoa'); // Cấp Khoa / Liên chi hội
+    expect(result.suggestedCampus).toBe('cs2'); // Cơ sở 2
+    expect(result.suggestedFormat).toBe('offline'); // Trực tiếp
+  });
 });

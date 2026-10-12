@@ -6,11 +6,15 @@ export interface ExtractedMetadata {
   title: string;
   description: string;
   posterImageUrl?: string;
+  posterImages?: string[];
+  canonicalUrl?: string;
 }
 
 @Injectable()
 export class OpenGraphExtractorService {
   async extract(url: string): Promise<ExtractedMetadata> {
+    const extractedImageUrls: string[] = [];
+
     try {
       // 1. Fetch với User-Agent facebookexternalhit để lấy metadata chuẩn nhất
       const response = await axios.get(url, {
@@ -25,13 +29,20 @@ export class OpenGraphExtractorService {
       let html = response.data;
       let $ = cheerio.load(html);
 
-      // 2. Kiểm tra nếu là link photo.php thì Facebook thường giấu canonical URL thật trong thẻ <link rel="alternate">
-      // Ví dụ: https://www.facebook.com/dk.lch.diachatkhtn/photos/.../1526825616138522/
-      const canonicalMatch = html.match(/href="(https:\/\/www\.facebook\.com\/[^"]+\/photos\/[^"]+)"/);
-      if (canonicalMatch && canonicalMatch[1] && url.includes('photo.php')) {
+      // 2. Tự động truy vết Canonical URL thật sự nếu có (cho link photo.php, share/p/..., posts/...)
+      const canonicalMatch = html.match(/rel="canonical"\s+href="([^"]+)"/i) || html.match(/href="(https:\/\/www\.facebook\.com\/[^"]+\/photos\/[^"]+)"/);
+      const ogUrlMatch = html.match(/property="og:url"\s+content="([^"]+)"/i);
+      let targetCanonicalUrl = '';
+
+      if (canonicalMatch && canonicalMatch[1]) {
+        targetCanonicalUrl = canonicalMatch[1].replace(/&amp;/g, '&');
+      } else if (ogUrlMatch && ogUrlMatch[1] && url.includes('/share/')) {
+        targetCanonicalUrl = ogUrlMatch[1].replace(/&amp;/g, '&');
+      }
+
+      if (targetCanonicalUrl && targetCanonicalUrl !== url) {
         try {
-          const canonicalUrl = canonicalMatch[1].replace(/&amp;/g, '&');
-          const canonicalRes = await axios.get(canonicalUrl, {
+          const canonicalRes = await axios.get(targetCanonicalUrl, {
             timeout: 10000,
             headers: {
               'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
@@ -46,54 +57,223 @@ export class OpenGraphExtractorService {
       }
 
       // 3. Trích xuất Title & Caption đầy đủ
-      // Thẻ <meta property="og:title"> trên trang canonical chứa TOÀN BỘ bài viết gốc!
-      let rawTitle = $('meta[property="og:title"]').attr('content') || $('title').text().trim() || '';
-      // Xóa phần đuôi "| Facebook"
-      rawTitle = rawTitle.replace(/\s*\|\s*Facebook$/i, '').trim();
+      // Kiểm tra xem Facebook có đính kèm toàn văn bài viết kèm emoji trong script CometSinglePostDialogRoot không:
+      let embeddedFullText = '';
+      const metaTitleJsonMatch = html.match(/"meta":\{"title":"([^"]+)"/);
+      if (metaTitleJsonMatch && metaTitleJsonMatch[1] && metaTitleJsonMatch[1].length > 200) {
+        try {
+          embeddedFullText = JSON.parse(`"${metaTitleJsonMatch[1]}"`);
+        } catch {
+          embeddedFullText = metaTitleJsonMatch[1].replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+        }
+      }
 
-      // Tách dòng đầu làm Tiêu đề, các dòng sau làm Nội dung chi tiết
-      let title = rawTitle;
-      let description = $('meta[name="description"]').attr('content') || $('meta[property="og:description"]').attr('content') || '';
+      let ogTitle = $('meta[property="og:title"]').attr('content') || $('title').text().trim() || '';
+      ogTitle = ogTitle.replace(/\s*\|\s*Facebook$/i, '').trim();
 
-      if (rawTitle.length > 50) {
-        description = rawTitle; // Lưu full caption
-        // Tìm dòng tiêu đề sự kiện (thường bắt đầu sau 'Đoàn - ' hoặc chứa icon như 🔴, [ , ")
-        const talkshowMatch = rawTitle.match(/(?:🔴|\[|“|")?([^–\n\r\.]{10,80}[–\-][^\n\r\.]{5,80})/);
+      let ogDesc = $('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || '';
+      ogDesc = ogDesc.replace(/\s*\|\s*Facebook$/i, '').trim();
+
+      let rawContent = embeddedFullText || ogTitle;
+      const isTitleJustPageName = ogTitle.length < 90 && (
+        /trường|khoa|thư\s*viện|đoàn|hội|clb|liên\s*chi\s*hội|hcmus/i.test(ogTitle) ||
+        ogDesc.length > ogTitle.length
+      );
+
+      if (!embeddedFullText && isTitleJustPageName && ogDesc.length > 20) {
+        rawContent = ogDesc;
+      }
+
+      // Lọc sạch mẩu cụt tên fanpage bị Facebook nén dính ở đầu bài (ví dụ: 'Đoàn - ')
+      rawContent = rawContent.replace(/^(?:đoàn\s*[-–—]\s*|hội\s*[-–—]\s*|clb\s*[-–—]\s*)/i, '').trim();
+
+      // Chuẩn hóa bài viết: Thêm xuống hàng tự nhiên trước các emoji mục tiêu rõ ràng
+      let formattedDescription = rawContent;
+      if (rawContent) {
+        formattedDescription = rawContent
+          .replace(/([^\n])\s*(🎙️|🎤|💬|🎁|📍|📅|⏰|⚡|🏃‍♂️|🏃|🔥|🏅|🏆|🥇|🥈|🥉|📌|🌱Đăng|🌱 Hạt|📚|🌟|🤖|THỜI GIAN|ĐỊA ĐIỂM)/g, '$1\n\n$2')
+          .replace(/([^\n])\s*(Đến với Hạt Giống Đỏ|Khi tham gia chương trình|Chủ đề:|TALKSHOW|THÔNG TIN SỰ KIỆN|QUYỀN LỢI VÀ CƠ CẤU|Bảng vàng giải thưởng)/g, '$1\n\n$2');
+      }
+
+      let title = rawContent;
+      let description = formattedDescription || ogDesc || rawContent;
+
+      if (rawContent.length > 50) {
+        const talkshowMatch = rawContent.match(/(?:TALK\s*SHOW|HỘI\s*THẢO|TỌA\s*ĐÀM|CHƯƠNG\s*TRÌNH|CUỘC\s*THI|CHIẾN\s*DỊCH|NGÀY\s*HỘI|ĐƯỜNG\s*CHẠY)[^–\n\r\.🌱🌟📚🔥]{5,100}[–\-:][^\n\r\.🌱🌟📚🔥]{5,100}/i);
         if (talkshowMatch && talkshowMatch[0]) {
-          title = talkshowMatch[0].replace(/^[^\w\u00C0-\u1EF9“"\[🔴]+/, '').trim();
+          title = talkshowMatch[0].trim();
         } else {
-          title = rawTitle.substring(0, 80).trim() + '...';
+          const quotedMatch = rawContent.match(/[“"\[]([^”"\]]+)[”"\]]/);
+          if (quotedMatch && quotedMatch[1] && quotedMatch[1].length > 10) {
+            title = quotedMatch[1].trim();
+          } else {
+            const firstLine = rawContent.split(/\n|🌱|🔴|📚|🌟|🎤|🔥/)[0].trim();
+            title = firstLine.length > 15 ? firstLine : rawContent.substring(0, 80).trim();
+          }
         }
       }
 
-      // 4. Trích xuất Poster Image URL
-      let posterImageUrl = $('meta[property="og:image"]').attr('content') || $('meta[name="twitter:image"]').attr('content');
-      
-      // Nếu là link photo.php mà chưa có ảnh, tự động fallback sang crawler media id chuẩn của Facebook
-      if (!posterImageUrl && url.includes('fbid=')) {
-        const fbidMatch = url.match(/fbid=(\d+)/);
-        if (fbidMatch && fbidMatch[1]) {
-          posterImageUrl = `https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=${fbidMatch[1]}`;
-        }
+      // 4. Trích xuất ảnh OpenGraph chính
+      const primaryOgImage = $('meta[property="og:image"]').attr('content') || $('meta[name="twitter:image"]').attr('content');
+      if (primaryOgImage && !extractedImageUrls.includes(primaryOgImage)) {
+        extractedImageUrls.push(primaryOgImage);
       }
+
+      // Quét thêm ảnh từ fbid trên URL chính
+      const mainFbidMatch = url.match(/fbid=(\d+)/);
+      if (mainFbidMatch && mainFbidMatch[1]) {
+        const fbidUrl = `https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=${mainFbidMatch[1]}`;
+        if (!extractedImageUrls.includes(fbidUrl)) extractedImageUrls.push(fbidUrl);
+      }
+
+      // 5. Jina AI Reader (r.jina.ai): Lấy toàn văn bài viết sạch + khôi phục đầy đủ emoji + trích xuất album ảnh
+      try {
+        const jinaUrl = `https://r.jina.ai/${targetCanonicalUrl || url}`;
+        const jinaRes = await axios.get(jinaUrl, { timeout: 8000 });
+        const jinaMarkdown = jinaRes.data;
+
+        if (jinaMarkdown && typeof jinaMarkdown === 'string') {
+          // A. Trích xuất tất cả fbid ảnh đính kèm từ markdown của bài viết
+          const fbidRegex = /fbid=(\d+)/g;
+          let fbMatch: RegExpExecArray | null;
+          while ((fbMatch = fbidRegex.exec(jinaMarkdown)) !== null) {
+            const id = fbMatch[1];
+            const imgUrl = `https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=${id}`;
+            if (!extractedImageUrls.includes(imgUrl)) {
+              extractedImageUrls.push(imgUrl);
+            }
+          }
+
+          // B. Bóc tách nội dung chính, loại bỏ hoàn toàn header rác
+          const mdLines = jinaMarkdown.split('\n');
+          const startIndex = mdLines.findIndex(l => l.startsWith('Markdown Content:'));
+          const contentAfterHeader = startIndex !== -1 ? mdLines.slice(startIndex + 1).join('\n') : jinaMarkdown;
+
+          // 1) Khôi phục emoji gốc: ![Image \d+: 🔥] -> 🔥
+          let cleanMd = contentAfterHeader.replace(/!\[Image\s+\d+:\s*([^\]]+)\]\([^\)]+\)/g, (match, emojiText) => {
+            if (emojiText && !emojiText.includes('May be') && !emojiText.includes('image') && emojiText.length <= 8) {
+              return emojiText.trim() + ' ';
+            }
+            return '';
+          });
+
+          // 2) Xóa các thẻ ảnh rác còn lại
+          cleanMd = cleanMd
+            .replace(/!\[Image[^\]]*\]\([^\)]+\)/g, '')
+            .replace(/!Image\s+\d+/g, '');
+
+          // 3) Giải nén các link rút gọn l.facebook.com hoặc chuyển link markdown thành text sạch
+          cleanMd = cleanMd.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, (match, text, href) => {
+            if (text.startsWith('http')) return text;
+            if (href.includes('l.facebook.com/l.php?u=')) {
+              try {
+                const u = new URL(href).searchParams.get('u');
+                if (u) return u;
+              } catch {
+                // Ignore parse error
+              }
+            }
+            return text;
+          });
+
+          const lines = cleanMd.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+          const postLines: string[] = [];
+          let inPost = false;
+
+          for (const l of lines) {
+            // Bỏ qua các dòng rác ban đầu của Facebook
+            if (!inPost) {
+              const isHeaderBoilerplate =
+                l.includes('\'s Post') ||
+                l.match(/\d+\s*(?:days?|hours?|mins?|ngày|giờ|phút)\s*ago/i) ||
+                l.match(/^\[?\d+[dhmw]\]?/i) ||
+                l.startsWith('Log In') ||
+                l.startsWith('Forgot Account') ||
+                l.startsWith('###') ||
+                l.startsWith('* * *') ||
+                l.startsWith('## ') ||
+                l.startsWith('[](') ||
+                l.startsWith('·') ||
+                l === '·';
+
+              if (isHeaderBoilerplate) {
+                continue;
+              }
+
+              // Tiêu chí bắt đầu bài viết thực sự
+              if (
+                l.startsWith('🔥') ||
+                l.startsWith('🔴') ||
+                l.startsWith('🌱') ||
+                l.startsWith('⚡') ||
+                l.startsWith('📍') ||
+                l.includes('CHÍNH THỨC') ||
+                l.includes('NGÀY HỘI') ||
+                l.includes('TALKSHOW') ||
+                l.includes('CUỘC THI') ||
+                l.includes('ĐƯỜNG CHẠY') ||
+                l.includes('HỘI THẢO') ||
+                l.length > 25
+              ) {
+                inPost = true;
+              }
+            }
+
+            if (inPost) {
+              // Điểm dừng: các phần bình luận Facebook, phản ứng, hoặc link ảnh đính kèm cuối bài
+              if (
+                l.includes('All reactions:') ||
+                l.includes('Like\nComment') ||
+                (l.startsWith('View ') && l.includes('repl')) ||
+                l.startsWith('English') ||
+                l.startsWith('Log In') ||
+                l.startsWith('See more from') ||
+                l.includes('Top fan') ||
+                l.includes('Privacy · Terms') ||
+                l.includes('/photo/?fbid=') ||
+                l.includes('/photos/')
+              ) {
+                break;
+              }
+              postLines.push(l);
+            }
+          }
+
+          if (postLines.length >= 3) {
+            const fullJinaContent = postLines.join('\n\n');
+            if (fullJinaContent.length > 100) {
+              rawContent = fullJinaContent;
+              description = fullJinaContent;
+            }
+          }
+        }
+      } catch {
+        // Bỏ qua nếu Jina lỗi
+      }
+
+      // Trích xuất poster chính
+      const posterImageUrl = extractedImageUrls.length > 0 ? extractedImageUrls[0] : undefined;
 
       return {
         title: title || 'Sự kiện sinh viên',
-        description: description || rawTitle,
-        posterImageUrl: posterImageUrl || undefined,
+        description: description || rawContent,
+        posterImageUrl,
+        posterImages: extractedImageUrls,
+        canonicalUrl: targetCanonicalUrl || undefined,
       };
     } catch (error) {
-      // Fallback khi Facebook rate limit
-      let fallbackPoster: string | undefined;
+      // Fallback
       const fbidMatch = url.match(/fbid=(\d+)/);
       if (fbidMatch && fbidMatch[1]) {
-        fallbackPoster = `https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=${fbidMatch[1]}`;
+        const fallback = `https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=${fbidMatch[1]}`;
+        extractedImageUrls.push(fallback);
       }
 
       return {
         title: 'Sự kiện chia sẻ từ Facebook',
         description: '',
-        posterImageUrl: fallbackPoster,
+        posterImageUrl: extractedImageUrls[0] || undefined,
+        posterImages: extractedImageUrls,
       };
     }
   }
