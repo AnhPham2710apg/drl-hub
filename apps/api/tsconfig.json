@@ -17,9 +17,6 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false,
-    "paths": {
-      "@drl-hub/shared-types": ["../../packages/shared-types/src/index.ts"]
-    }
+    "noFallthroughCasesInSwitch": false
   }
 }
