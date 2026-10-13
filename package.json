@@ -8,9 +8,9 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run db:generate --workspace=@drl-hub/database && npm run build --workspaces --if-present",
+    "build": "npm run db:generate --workspace=@drl-hub/database && npm run build --workspace=@drl-hub/shared-types && npm run build --workspaces --if-present",
     "start": "node apps/api/dist/main.js",
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm run build --workspace=@drl-hub/shared-types && npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down"

@@ -29,10 +29,13 @@ jobs:
       - name: 4. Generate Prisma Client
         run: npm run db:generate --workspace=@drl-hub/database
 
-      - name: 5. Run All Quality Unit Tests (The Harness)
+      - name: 5. Build Shared Types Package
+        run: npm run build --workspace=@drl-hub/shared-types
+
+      - name: 6. Run All Quality Unit Tests (The Harness)
         run: npm test
 
-      - name: 6. Build Project Artifacts
+      - name: 7. Build Project Artifacts
         run: npm run build
 
   # ==========================================
