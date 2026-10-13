@@ -21,9 +21,16 @@ export class OpenGraphExtractorService {
    */
   async resolveFacebookUrl(url: string): Promise<string> {
     let targetUrl = url;
+    let hops = 0;
 
-    // 1. Nếu là dạng link share (facebook.com/share/p/..., share/v/..., fb.watch/...)
-    if (targetUrl.includes('/share/') || targetUrl.includes('fb.watch')) {
+    // Đảm bảo share URL có dấu gạch chéo cuối để tránh bị Facebook gửi 301 thừa
+    if (targetUrl.includes('/share/') && !targetUrl.endsWith('/')) {
+      targetUrl += '/';
+    }
+
+    // 1. Vòng lặp giải nén redirect (hỗ trợ cả 301, 302 và multi-hop redirect cho link share/v/p)
+    while ((targetUrl.includes('/share/') || targetUrl.includes('fb.watch')) && hops < 5) {
+      hops++;
       try {
         const res = await axios.get(targetUrl, {
           headers: {
@@ -32,19 +39,30 @@ export class OpenGraphExtractorService {
           },
           maxRedirects: 0,
           validateStatus: () => true,
-          timeout: 6000,
+          timeout: 8000,
         });
 
         const loc = res.headers['location'];
-        if (loc) {
-          targetUrl = loc;
-        }
+        if (!loc) break;
+        targetUrl = loc;
       } catch (err: any) {
-        this.logger.warn(`Could not resolve share redirect for ${url}: ${err.message}`);
+        this.logger.warn(`Could not resolve share redirect at hop ${hops} for ${url}: ${err.message}`);
+        break;
       }
     }
 
-    // 2. Chuyển đổi permalink.php?story_fbid=...&id=... hoặc story.php thành dạng /posts/ chuẩn hóa
+    // 2. Nếu Facebook chuyển hướng sang trang đăng nhập với tham số next=
+    const nextMatch = targetUrl.match(/[?&]next=([^&]+)/);
+    if (nextMatch) {
+      try {
+        const decodedNext = decodeURIComponent(nextMatch[1]);
+        if (decodedNext.includes('permalink.php') || decodedNext.includes('/posts/')) {
+          targetUrl = decodedNext;
+        }
+      } catch {}
+    }
+
+    // 3. Chuyển đổi permalink.php?story_fbid=...&id=... hoặc story.php thành dạng /posts/ canonical chuẩn hóa
     if (targetUrl.includes('permalink.php') || targetUrl.includes('story.php')) {
       const storyFbidMatch = targetUrl.match(/story_fbid=([^&]+)/);
       const idMatch = targetUrl.match(/[?&]id=(\d+)/);
@@ -58,7 +76,8 @@ export class OpenGraphExtractorService {
 
   isFacebookLoginWall(text: string): boolean {
     if (!text) return true;
-    const lower = text.toLowerCase();
+    const lower = text.toLowerCase().trim();
+    if (lower === 'facebook' || lower === 'log in' || lower === 'đăng nhập') return true;
     const loginMarkers = [
       'đăng nhập vào facebook',
       'khám phá những điều bạn yêu thích',
@@ -72,7 +91,7 @@ export class OpenGraphExtractorService {
       'log in to see more',
     ];
     const matchCount = loginMarkers.filter(m => lower.includes(m)).length;
-    return matchCount >= 2;
+    return matchCount >= 1;
   }
 
   async extract(url: string): Promise<ExtractedMetadata> {

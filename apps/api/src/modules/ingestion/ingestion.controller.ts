@@ -97,33 +97,54 @@ export class IngestionController {
 
     const finalPoster = proxiedImages.length > 0 ? proxiedImages[0] : undefined;
 
-    // Trích xuất Tiêu đề thông minh: Ưu tiên Multi-Agent Coordinator, fallback qua heuristic
-    let finalTitle = finalPayload?.title || meta.title;
+    // Trích xuất Tiêu đề thông minh: Ưu tiên Multi-Agent (nếu có giá trị thực sự), fallback qua OpenGraph metadata
+    let finalTitle = meta.title;
+    if (finalPayload?.title && finalPayload.title !== 'Sự kiện sinh viên' && finalPayload.title !== 'Facebook') {
+      finalTitle = finalPayload.title;
+    }
+
     const isBioTitle = /người\s*theo\s*dõi|đang\s*nói\s*về\s*điều\s*này|lượt\s*đăng\s*ký|facebook/i.test(finalTitle);
-    if ((isBioTitle || !finalTitle || finalTitle === 'Sự kiện chia sẻ từ Facebook') && body.content) {
-      const firstLineMatch = body.content.match(/\[([^\]]+)\]\s*([^\n\r]+)/);
+    const contentText = body.content || meta.description;
+    if ((isBioTitle || !finalTitle || finalTitle === 'Sự kiện sinh viên' || finalTitle === 'Sự kiện chia sẻ từ Facebook') && contentText) {
+      const firstLineMatch = contentText.match(/\[([^\]]+)\]\s*([^\n\r]+)/);
       if (firstLineMatch) {
         finalTitle = `[${firstLineMatch[1]}] ${firstLineMatch[2]}`.trim();
       } else {
-        const lines = body.content.split('\n').map(l => l.trim()).filter(l => l.length > 5 && !l.startsWith('!') && !l.startsWith('http'));
-        if (lines.length > 0) {
-          finalTitle = lines[0].substring(0, 100).trim();
+        const quotedMatch = contentText.match(/[“"\[]([^”"\]]{6,100})[”"\]]/);
+        if (quotedMatch) {
+          finalTitle = quotedMatch[1].trim();
+        } else {
+          const lines = contentText.split('\n').map(l => l.trim()).filter(l => l.length > 5 && !l.startsWith('!') && !l.startsWith('http'));
+          if (lines.length > 0) {
+            finalTitle = lines[0].substring(0, 100).trim();
+          }
         }
       }
     }
 
-    // Xây dựng danh sách clauses từ Multi-Agent (hoặc từ rule)
-    const suggestedClauses = finalPayload
-      ? [
-          {
-            clause: finalPayload.clauseNumber as any,
-            clauseName: HCMUS_DRL_CONFIG[finalPayload.clauseNumber as any]?.name || `Nội dung ${finalPayload.clauseNumber}`,
-            subCategory: finalPayload.subCategory || 'Đánh giá tự động từ Multi-Agent',
-            confidence: 0.99,
-            points: finalPayload.awardedPoints,
-          },
-        ]
-      : ruleParsed.detectedClauses;
+    // Xây dựng danh sách clauses: Nếu AI có kết quả thẩm định hợp lệ (isAiResolved) thì dùng AI, nếu fallback thì ưu tiên ruleParsed chính xác theo quy chế HCMUS
+    let suggestedClauses = ruleParsed.detectedClauses;
+    if (finalPayload?.clauseNumber && agentResult.critic.isAiResolved && agentResult.critic.isValid) {
+      suggestedClauses = [
+        {
+          clause: finalPayload.clauseNumber as any,
+          clauseName: HCMUS_DRL_CONFIG[finalPayload.clauseNumber as any]?.name || `Nội dung ${finalPayload.clauseNumber}`,
+          subCategory: finalPayload.subCategory || 'Đánh giá tự động từ Multi-Agent',
+          confidence: 0.99,
+          points: finalPayload.awardedPoints,
+        },
+      ];
+    } else if (suggestedClauses.length === 0 && finalPayload?.clauseNumber) {
+      suggestedClauses = [
+        {
+          clause: finalPayload.clauseNumber as any,
+          clauseName: HCMUS_DRL_CONFIG[finalPayload.clauseNumber as any]?.name || `Nội dung ${finalPayload.clauseNumber}`,
+          subCategory: finalPayload.subCategory || 'Đánh giá tự động',
+          confidence: 0.8,
+          points: finalPayload.awardedPoints || 5,
+        },
+      ];
+    }
 
     return {
       originalUrl,
@@ -139,11 +160,13 @@ export class IngestionController {
       extractedTime: finalPayload?.eventTime || ruleParsed.extractedTime,
       extractedLocation: finalPayload?.location || ruleParsed.extractedLocation,
       extractedRegistrationLink: finalPayload?.registrationLink || ruleParsed.extractedRegistrationLink,
-      suggestedFaculty: finalPayload?.faculty || ruleParsed.suggestedFaculty,
-      suggestedOrgLevel: finalPayload?.orgLevel || ruleParsed.suggestedOrgLevel,
+      suggestedFaculty: (finalPayload?.faculty && finalPayload.faculty !== 'all') ? finalPayload.faculty : (ruleParsed.suggestedFaculty || finalPayload?.faculty || 'all'),
+      suggestedOrgLevel: (finalPayload?.orgLevel && finalPayload.orgLevel !== 'truong') ? finalPayload.orgLevel : (ruleParsed.suggestedOrgLevel || finalPayload?.orgLevel || 'truong'),
       suggestedCampus: finalPayload?.campus || ruleParsed.suggestedCampus,
       suggestedFormat: finalPayload?.format || ruleParsed.suggestedFormat,
-      debateSummary: agentResult.critic.debateSummary,
+      debateSummary: agentResult.critic.isAiResolved
+        ? agentResult.critic.debateSummary
+        : (ruleParsed.detectedClauses.length > 0 ? 'Đã đối soát thành công theo bộ quy chế ĐRL HCMUS.' : agentResult.critic.debateSummary),
       auditNotes: agentResult.critic.issuesFound,
     };
   }

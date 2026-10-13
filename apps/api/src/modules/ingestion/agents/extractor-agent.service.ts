@@ -45,13 +45,13 @@ Trả về JSON schema:
     const res = await this.geminiClient.generateJson<EntityExtractionOutput>(prompt, systemInstruction);
     if (!res) {
       return {
-        title: 'Sự kiện sinh viên',
+        title: '',
         confidence: 0.5,
       };
     }
 
     return {
-      title: res.title || 'Sự kiện sinh viên',
+      title: res.title || '',
       registrationDeadline: res.registrationDeadline || undefined,
       eventDate: res.eventDate || undefined,
       eventTime: res.eventTime || undefined,

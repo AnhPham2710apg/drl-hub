@@ -42,6 +42,7 @@ export interface CriticReviewOutput {
     location?: string;
   };
   debateSummary?: string;
+  isAiResolved?: boolean;
 }
 
 export interface MultiAgentOrchestrationResult {

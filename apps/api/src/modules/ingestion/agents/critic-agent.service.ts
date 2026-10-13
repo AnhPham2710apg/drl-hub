@@ -150,7 +150,8 @@ Trả về JSON schema:
         isValid: heuristicIssues.length === 0,
         issuesFound: heuristicIssues,
         adjustedValues: fallbackAdjustments,
-        debateSummary: heuristicIssues.length > 0 ? 'Đã tự động điều chỉnh theo quy tắc kiểm tra chéo.' : 'Dự thảo đạt chuẩn.',
+        debateSummary: heuristicIssues.length > 0 ? 'Đã tự động điều chỉnh theo quy tắc kiểm tra chéo.' : 'Đã thẩm định dữ liệu bằng quy tắc đối soát.',
+        isAiResolved: false,
       };
     }
 
@@ -159,6 +160,7 @@ Trả về JSON schema:
       issuesFound: reviewRes.issuesFound || heuristicIssues,
       adjustedValues: reviewRes.adjustedValues,
       debateSummary: reviewRes.debateSummary || 'Đã kiểm chứng chéo và xác nhận.',
+      isAiResolved: true,
     };
   }
 }

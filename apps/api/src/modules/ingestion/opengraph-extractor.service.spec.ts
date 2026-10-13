@@ -27,6 +27,14 @@ describe('OpenGraphExtractorService', () => {
       const resolved = await service.resolveFacebookUrl(normalUrl);
       expect(resolved).toBe(normalUrl);
     });
+    it('should extract canonical url if redirected to login.php?next=...', async () => {
+      const loginUrl =
+        'https://www.facebook.com/login.php?next=https%3A%2F%2Fwww.facebook.com%2Fpermalink.php%3Fstory_fbid%3Dpfbid0jPJFuHqhNQrsBAsR4x3G53UvSCSVmTYdi7NtrcFsAQzcQfvUp7LzkFhW3Pw5wHJLl%26id%3D61582622519868';
+      const resolved = await service.resolveFacebookUrl(loginUrl);
+      expect(resolved).toBe(
+        'https://www.facebook.com/61582622519868/posts/pfbid0jPJFuHqhNQrsBAsR4x3G53UvSCSVmTYdi7NtrcFsAQzcQfvUp7LzkFhW3Pw5wHJLl/',
+      );
+    });
   });
 
   describe('isFacebookLoginWall', () => {
@@ -34,6 +42,11 @@ describe('OpenGraphExtractorService', () => {
       const loginWallText =
         'Đăng nhập vào Facebook để tiếp tục. Khám phá những điều bạn yêu thích. Quên mật khẩu? Tạo tài khoản mới.';
       expect(service.isFacebookLoginWall(loginWallText)).toBe(true);
+    });
+
+    it('should identify single keyword Facebook as login wall', () => {
+      expect(service.isFacebookLoginWall('Facebook')).toBe(true);
+      expect(service.isFacebookLoginWall('Log In')).toBe(true);
     });
 
     it('should not flag genuine post content as login wall', () => {

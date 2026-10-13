@@ -23,13 +23,15 @@ export interface GeminiExtractionResult {
 export class GeminiLlmService {
   private readonly logger = new Logger(GeminiLlmService.name);
   private readonly apiKey = process.env.GEMINI_API_KEY || '';
-  private readonly modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  private readonly modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 
   private readonly candidateModels = [
-    process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-    'gemini-2.5-flash-lite',
-    'gemini-3.5-flash',
-    'gemini-3.5-flash-lite',
+    process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-8b',
+    'gemini-1.5-pro',
   ].filter((v, i, a) => v && a.indexOf(v) === i);
 
   /**
