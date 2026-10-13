@@ -28,6 +28,8 @@ export interface IngestPreviewResponse {
   suggestedOrgLevel?: string;
   suggestedCampus?: string;
   suggestedFormat?: string;
+  debateSummary?: string;
+  auditNotes?: string[];
 }
 
 export interface PublishEventRequest {

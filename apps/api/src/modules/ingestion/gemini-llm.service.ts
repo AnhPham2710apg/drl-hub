@@ -26,7 +26,40 @@ export class GeminiLlmService {
   private readonly modelName = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 
   /**
-   * Gọi trực tiếp Gemini LLM API của Google để đọc hiểu toàn văn bài viết và trích xuất chuẩn xác
+   * Phương thức chung cho các Sub-Agent gọi Gemini API với systemInstruction và schema JSON
+   */
+  async generateJson<T>(prompt: string, systemInstruction: string, timeoutMs: number = 12000): Promise<T | null> {
+    if (!this.apiKey) {
+      this.logger.warn('GEMINI_API_KEY is not set. Skipping AI generation.');
+      return null;
+    }
+
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent?key=${this.apiKey}`;
+      const response = await axios.post(
+        endpoint,
+        {
+          contents: [{ parts: [{ text: prompt }] }],
+          systemInstruction: { parts: [{ text: systemInstruction }] },
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.1,
+          },
+        },
+        { timeout: timeoutMs },
+      );
+
+      const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) return null;
+      return JSON.parse(rawText) as T;
+    } catch (error: any) {
+      this.logger.error(`Gemini call error: ${error.response?.data?.error?.message || error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Gọi trực tiếp Gemini LLM API của Google để đọc hiểu toàn văn bài viết và trích xuất chuẩn xác (Legacy fallback)
    */
   async extractEvent(content: string, url?: string): Promise<GeminiExtractionResult | null> {
     if (!this.apiKey) {

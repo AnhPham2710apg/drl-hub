@@ -4,6 +4,7 @@ import { UrlSanitizerService } from './url-sanitizer.service';
 import { OpenGraphExtractorService } from './opengraph-extractor.service';
 import { DrlClauseParserService } from './drl-clause-parser.service';
 import { GeminiLlmService } from './gemini-llm.service';
+import { MultiAgentCoordinatorService } from './multi-agent-coordinator.service';
 import { IngestPreviewRequest, IngestPreviewResponse, HCMUS_DRL_CONFIG } from '@drl-hub/shared-types';
 
 @Controller('api/v1/events')
@@ -13,6 +14,7 @@ export class IngestionController {
     private readonly ogExtractor: OpenGraphExtractorService,
     private readonly clauseParser: DrlClauseParserService,
     private readonly geminiService: GeminiLlmService,
+    private readonly coordinator: MultiAgentCoordinatorService,
   ) {}
 
   @Post('ingest-preview')
@@ -23,12 +25,12 @@ export class IngestionController {
     // 2. Trích xuất metadata OpenGraph
     const meta = await this.ogExtractor.extract(cleanUrl);
 
-    // 3. Phân tích nội dung: Gọi Gemini 3.5 Flash-Lite LLM trước, nếu lỗi hoặc key trống thì fallback sang DrlClauseParserService
-    // Đính kèm thông tin URL gốc & Canonical URL để AI phát hiện Fanpage/Đơn vị tổ chức từ slug (ví dụ: dk.lch.diachatkhtn -> Đoàn - Hội Khoa Địa chất)
+    // 3. Phân tích nội dung đa tác nhân (Multi-Agent Pipeline với Debate & Verification)
     const effectiveUrl = meta.canonicalUrl || cleanUrl;
     const combinedContent = `URL GỐC / FANPAGE SLUG: ${effectiveUrl}\nTIÊU ĐỀ: ${meta.title}\nNỘI DUNG CHI TIẾT:\n${body.content || meta.description}`;
     
-    let geminiResult = await this.geminiService.extractEvent(combinedContent, effectiveUrl);
+    let agentResult = await this.coordinator.orchestrate(combinedContent, effectiveUrl);
+    const finalPayload = agentResult.finalPayload;
     const ruleParsed = this.clauseParser.parse(combinedContent);
 
     // Chuẩn hóa danh sách ảnh: Nếu là link của Facebook lookaside, chuyển qua endpoint proxy của server
@@ -73,8 +75,8 @@ export class IngestionController {
 
     const finalPoster = proxiedImages.length > 0 ? proxiedImages[0] : undefined;
 
-    // Trích xuất Tiêu đề thông minh: Ưu tiên Gemini LLM, fallback qua heuristic
-    let finalTitle = geminiResult?.title || meta.title;
+    // Trích xuất Tiêu đề thông minh: Ưu tiên Multi-Agent Coordinator, fallback qua heuristic
+    let finalTitle = finalPayload?.title || meta.title;
     const isBioTitle = /người\s*theo\s*dõi|đang\s*nói\s*về\s*điều\s*này|lượt\s*đăng\s*ký|facebook/i.test(finalTitle);
     if ((isBioTitle || !finalTitle || finalTitle === 'Sự kiện chia sẻ từ Facebook') && body.content) {
       const firstLineMatch = body.content.match(/\[([^\]]+)\]\s*([^\n\r]+)/);
@@ -88,15 +90,15 @@ export class IngestionController {
       }
     }
 
-    // Xây dựng danh sách clauses từ Gemini (hoặc từ rule)
-    const suggestedClauses = geminiResult
+    // Xây dựng danh sách clauses từ Multi-Agent (hoặc từ rule)
+    const suggestedClauses = finalPayload
       ? [
           {
-            clause: geminiResult.clauseNumber,
-            clauseName: HCMUS_DRL_CONFIG[geminiResult.clauseNumber as any]?.name || `Nội dung ${geminiResult.clauseNumber}`,
-            subCategory: geminiResult.subCategory || 'Đánh giá tự động từ Gemini AI',
+            clause: finalPayload.clauseNumber as any,
+            clauseName: HCMUS_DRL_CONFIG[finalPayload.clauseNumber as any]?.name || `Nội dung ${finalPayload.clauseNumber}`,
+            subCategory: finalPayload.subCategory || 'Đánh giá tự động từ Multi-Agent',
             confidence: 0.99,
-            points: geminiResult.awardedPoints,
+            points: finalPayload.awardedPoints,
           },
         ]
       : ruleParsed.detectedClauses;
@@ -110,15 +112,17 @@ export class IngestionController {
       posterImageUrl: finalPoster,
       posterImages: proxiedImages,
       suggestedClauses,
-      suggestedDeadline: geminiResult?.registrationDeadline || ruleParsed.extractedDeadline,
-      extractedDate: geminiResult?.eventDate || ruleParsed.extractedDate,
-      extractedTime: geminiResult?.eventTime || ruleParsed.extractedTime,
-      extractedLocation: geminiResult?.location || ruleParsed.extractedLocation,
-      extractedRegistrationLink: geminiResult?.registrationLink || ruleParsed.extractedRegistrationLink,
-      suggestedFaculty: geminiResult?.faculty || ruleParsed.suggestedFaculty,
-      suggestedOrgLevel: geminiResult?.orgLevel || ruleParsed.suggestedOrgLevel,
-      suggestedCampus: geminiResult?.campus || ruleParsed.suggestedCampus,
-      suggestedFormat: geminiResult?.format || ruleParsed.suggestedFormat,
+      suggestedDeadline: finalPayload?.registrationDeadline || ruleParsed.extractedDeadline,
+      extractedDate: finalPayload?.eventDate || ruleParsed.extractedDate,
+      extractedTime: finalPayload?.eventTime || ruleParsed.extractedTime,
+      extractedLocation: finalPayload?.location || ruleParsed.extractedLocation,
+      extractedRegistrationLink: finalPayload?.registrationLink || ruleParsed.extractedRegistrationLink,
+      suggestedFaculty: finalPayload?.faculty || ruleParsed.suggestedFaculty,
+      suggestedOrgLevel: finalPayload?.orgLevel || ruleParsed.suggestedOrgLevel,
+      suggestedCampus: finalPayload?.campus || ruleParsed.suggestedCampus,
+      suggestedFormat: finalPayload?.format || ruleParsed.suggestedFormat,
+      debateSummary: agentResult.critic.debateSummary,
+      auditNotes: agentResult.critic.issuesFound,
     };
   }
 
