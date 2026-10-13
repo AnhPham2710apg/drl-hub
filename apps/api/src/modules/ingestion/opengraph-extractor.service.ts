@@ -133,21 +133,34 @@ export class OpenGraphExtractorService {
         const jinaMarkdown = jinaRes.data;
 
         if (jinaMarkdown && typeof jinaMarkdown === 'string') {
-          // A. Trích xuất tất cả fbid ảnh đính kèm từ markdown của bài viết
-          const fbidRegex = /fbid=(\d+)/g;
-          let fbMatch: RegExpExecArray | null;
-          while ((fbMatch = fbidRegex.exec(jinaMarkdown)) !== null) {
-            const id = fbMatch[1];
-            const imgUrl = `https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=${id}`;
-            if (!extractedImageUrls.includes(imgUrl)) {
-              extractedImageUrls.push(imgUrl);
-            }
-          }
-
-          // B. Bóc tách nội dung chính, loại bỏ hoàn toàn header rác
+          // Bóc tách nội dung chính, loại bỏ hoàn toàn header rác
           const mdLines = jinaMarkdown.split('\n');
           const startIndex = mdLines.findIndex(l => l.startsWith('Markdown Content:'));
           const contentAfterHeader = startIndex !== -1 ? mdLines.slice(startIndex + 1).join('\n') : jinaMarkdown;
+
+          // Trích xuất ảnh poster/album CHỈ TRONG PHẠM VI BÀI VIẾT (trước All reactions / bình luận / feed khác)
+          const stopMarkers = ['All reactions:', 'Like\nComment', 'Top fan', 'See more from', 'Privacy · Terms'];
+          let postRawSection = contentAfterHeader;
+          for (const stop of stopMarkers) {
+            const stopIdx = postRawSection.indexOf(stop);
+            if (stopIdx !== -1) {
+              postRawSection = postRawSection.substring(0, stopIdx);
+            }
+          }
+
+          // A. Trích xuất fbid ảnh đính kèm từ chính phạm vi bài viết
+          const fbidRegex = /(?:photo(?:\.php)?\?(?:[^"\s\)]*&)?fbid=|lookaside\.fbsbx\.com\/lookaside\/crawler\/media\/\?media_id=|fbid=)(\d+)/g;
+          let fbMatch: RegExpExecArray | null;
+          const postImageUrls: string[] = [];
+          while ((fbMatch = fbidRegex.exec(postRawSection)) !== null) {
+            const id = fbMatch[1];
+            const imgUrl = `https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=${id}`;
+            if (!postImageUrls.includes(imgUrl) && !extractedImageUrls.includes(imgUrl)) {
+              postImageUrls.push(imgUrl);
+            }
+          }
+          // Giới hạn ảnh đính kèm bài viết tối đa 4 ảnh để tránh rò rỉ timeline
+          extractedImageUrls.push(...postImageUrls.slice(0, 4));
 
           // 1) Khôi phục emoji gốc: ![Image \d+: 🔥] -> 🔥
           let cleanMd = contentAfterHeader.replace(/!\[Image\s+\d+:\s*([^\]]+)\]\([^\)]+\)/g, (match, emojiText) => {
@@ -251,14 +264,15 @@ export class OpenGraphExtractorService {
         // Bỏ qua nếu Jina lỗi
       }
 
-      // Trích xuất poster chính
-      const posterImageUrl = extractedImageUrls.length > 0 ? extractedImageUrls[0] : undefined;
+      // Trích xuất poster chính (giới hạn tối đa 4 ảnh để tránh rò rỉ timeline)
+      const finalPosterImages = extractedImageUrls.slice(0, 4);
+      const posterImageUrl = finalPosterImages.length > 0 ? finalPosterImages[0] : undefined;
 
       return {
         title: title || 'Sự kiện sinh viên',
         description: description || rawContent,
         posterImageUrl,
-        posterImages: extractedImageUrls,
+        posterImages: finalPosterImages,
         canonicalUrl: targetCanonicalUrl || undefined,
       };
     } catch (error) {
@@ -269,11 +283,12 @@ export class OpenGraphExtractorService {
         extractedImageUrls.push(fallback);
       }
 
+      const fallbackImages = extractedImageUrls.slice(0, 4);
       return {
         title: 'Sự kiện chia sẻ từ Facebook',
         description: '',
-        posterImageUrl: extractedImageUrls[0] || undefined,
-        posterImages: extractedImageUrls,
+        posterImageUrl: fallbackImages[0] || undefined,
+        posterImages: fallbackImages,
       };
     }
   }

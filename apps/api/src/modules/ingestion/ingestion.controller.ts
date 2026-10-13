@@ -66,7 +66,8 @@ export class IngestionController {
       rawImages.push(meta.posterImageUrl);
     }
 
-    const proxiedImages = rawImages.map(img => {
+    const finalRawImages = rawImages.slice(0, 4);
+    const proxiedImages = finalRawImages.map(img => {
       if (img.includes('lookaside.fbsbx.com')) {
         return `/api/v1/events/proxy-image?url=${encodeURIComponent(img)}`;
       }

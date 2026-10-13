@@ -23,7 +23,14 @@ export interface GeminiExtractionResult {
 export class GeminiLlmService {
   private readonly logger = new Logger(GeminiLlmService.name);
   private readonly apiKey = process.env.GEMINI_API_KEY || '';
-  private readonly modelName = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+  private readonly modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+
+  private readonly candidateModels = [
+    process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-3.5-flash-lite',
+  ].filter((v, i, a) => v && a.indexOf(v) === i);
 
   /**
    * Phương thức chung cho các Sub-Agent gọi Gemini API với systemInstruction và schema JSON
@@ -34,28 +41,33 @@ export class GeminiLlmService {
       return null;
     }
 
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent?key=${this.apiKey}`;
-      const response = await axios.post(
-        endpoint,
-        {
-          contents: [{ parts: [{ text: prompt }] }],
-          systemInstruction: { parts: [{ text: systemInstruction }] },
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.1,
+    for (const model of this.candidateModels) {
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
+        const response = await axios.post(
+          endpoint,
+          {
+            contents: [{ parts: [{ text: prompt }] }],
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.1,
+            },
           },
-        },
-        { timeout: timeoutMs },
-      );
+          { timeout: timeoutMs },
+        );
 
-      const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!rawText) return null;
-      return JSON.parse(rawText) as T;
-    } catch (error: any) {
-      this.logger.error(`Gemini call error: ${error.response?.data?.error?.message || error.message}`);
-      return null;
+        const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!rawText) continue;
+        return JSON.parse(rawText) as T;
+      } catch (error: any) {
+        const errMsg = error.response?.data?.error?.message || error.message;
+        this.logger.warn(`Gemini call with model "${model}" failed (${errMsg}). Trying next model...`);
+      }
     }
+
+    this.logger.error('All candidate Gemini models failed.');
+    return null;
   }
 
   /**
@@ -179,34 +191,37 @@ Trả về JSON duy nhất với cấu trúc sau:
 }
 `;
 
-    try {
-      this.logger.log(`Calling Gemini API (${this.modelName}) for event extraction...`);
+    for (const model of this.candidateModels) {
+      try {
+        this.logger.log(`Calling Gemini API (${model}) for event extraction...`);
 
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent?key=${this.apiKey}`;
-      const response = await axios.post(
-        endpoint,
-        {
-          contents: [{ parts: [{ text: prompt }] }],
-          systemInstruction: { parts: [{ text: systemInstruction }] },
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.1,
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
+        const response = await axios.post(
+          endpoint,
+          {
+            contents: [{ parts: [{ text: prompt }] }],
+            systemInstruction: { parts: [{ text: systemInstruction }] },
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.1,
+            },
           },
-        },
-        { timeout: 15000 },
-      );
+          { timeout: 15000 },
+        );
 
-      const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!rawText) {
-        throw new Error('Empty response from Gemini API');
+        const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!rawText) continue;
+
+        const parsed: GeminiExtractionResult = JSON.parse(rawText);
+        this.logger.log(`Successfully extracted event via Gemini (${model}): "${parsed.title}" (ND${parsed.clauseNumber}, +${parsed.awardedPoints}đ)`);
+        return parsed;
+      } catch (error: any) {
+        const errMsg = error.response?.data?.error?.message || error.message;
+        this.logger.warn(`Gemini extraction with model "${model}" failed (${errMsg}). Trying next model...`);
       }
-
-      const parsed: GeminiExtractionResult = JSON.parse(rawText);
-      this.logger.log(`Successfully extracted event via Gemini: "${parsed.title}" (ND${parsed.clauseNumber}, +${parsed.awardedPoints}đ)`);
-      return parsed;
-    } catch (error: any) {
-      this.logger.error(`Gemini extraction failed: ${error.response?.data?.error?.message || error.message}`);
-      return null;
     }
+
+    this.logger.error('All candidate Gemini models failed in extractEvent.');
+    return null;
   }
 }

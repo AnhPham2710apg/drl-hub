@@ -34,6 +34,7 @@ model User {
   studentId    String?   @unique @map("student_id") @db.VarChar(20)
   fullName     String    @map("full_name") @db.VarChar(100)
   avatarUrl    String?   @map("avatar_url")
+  passwordHash String?   @map("password_hash") @db.VarChar(255)
   faculty      String?   @db.VarChar(100)
   role         Role      @default(STUDENT)
   isActive     Boolean   @default(true) @map("is_active")
@@ -81,6 +82,11 @@ model Event {
   originalPostUrl      String        @unique @map("original_post_url")
   cleanUrlHash         String        @unique @map("clean_url_hash") @db.VarChar(64)
   posterImageUrl       String?       @map("poster_image_url")
+  images               String[]      @default([])
+  faculty              String?       @db.VarChar(50)
+  campus               String?       @db.VarChar(50)
+  format               String?       @db.VarChar(50)
+  orgLevel             String?       @map("org_level") @db.VarChar(50)
   organizerId          String?       @map("organizer_id") @db.Uuid
   submittedById        String?       @map("submitted_by") @db.Uuid
   status               EventStatus   @default(PENDING)
