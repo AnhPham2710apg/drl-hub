@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
@@ -8,16 +8,82 @@ export interface ExtractedMetadata {
   posterImageUrl?: string;
   posterImages?: string[];
   canonicalUrl?: string;
+  isBlockedByLoginWall?: boolean;
 }
 
 @Injectable()
 export class OpenGraphExtractorService {
+  private readonly logger = new Logger(OpenGraphExtractorService.name);
+
+  /**
+   * Tự động phân giải link rút gọn/share của Facebook thành URL bài viết chính thức (/posts/)
+   * để vượt qua rào cản yêu cầu đăng nhập (login wall) của Facebook đối với link chia sẻ.
+   */
+  async resolveFacebookUrl(url: string): Promise<string> {
+    let targetUrl = url;
+
+    // 1. Nếu là dạng link share (facebook.com/share/p/..., share/v/..., fb.watch/...)
+    if (targetUrl.includes('/share/') || targetUrl.includes('fb.watch')) {
+      try {
+        const res = await axios.get(targetUrl, {
+          headers: {
+            'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+            'Accept-Language': 'vi,en;q=0.9',
+          },
+          maxRedirects: 0,
+          validateStatus: () => true,
+          timeout: 6000,
+        });
+
+        const loc = res.headers['location'];
+        if (loc) {
+          targetUrl = loc;
+        }
+      } catch (err: any) {
+        this.logger.warn(`Could not resolve share redirect for ${url}: ${err.message}`);
+      }
+    }
+
+    // 2. Chuyển đổi permalink.php?story_fbid=...&id=... hoặc story.php thành dạng /posts/ chuẩn hóa
+    if (targetUrl.includes('permalink.php') || targetUrl.includes('story.php')) {
+      const storyFbidMatch = targetUrl.match(/story_fbid=([^&]+)/);
+      const idMatch = targetUrl.match(/[?&]id=(\d+)/);
+      if (storyFbidMatch && idMatch) {
+        targetUrl = `https://www.facebook.com/${idMatch[1]}/posts/${storyFbidMatch[1]}/`;
+      }
+    }
+
+    return targetUrl;
+  }
+
+  isFacebookLoginWall(text: string): boolean {
+    if (!text) return true;
+    const lower = text.toLowerCase();
+    const loginMarkers = [
+      'đăng nhập vào facebook',
+      'khám phá những điều bạn yêu thích',
+      'quên mật khẩu',
+      'tạo tài khoản mới',
+      'log into facebook',
+      'explore the things you love',
+      'forgot password',
+      'create new account',
+      'see more on facebook',
+      'log in to see more',
+    ];
+    const matchCount = loginMarkers.filter(m => lower.includes(m)).length;
+    return matchCount >= 2;
+  }
+
   async extract(url: string): Promise<ExtractedMetadata> {
     const extractedImageUrls: string[] = [];
 
+    // Bước 0: Phân giải URL bài viết thực sự (giải nén link /share/ hoặc permalink.php)
+    const effectiveUrl = await this.resolveFacebookUrl(url);
+
     try {
       // 1. Fetch với User-Agent facebookexternalhit để lấy metadata chuẩn nhất
-      const response = await axios.get(url, {
+      const response = await axios.get(effectiveUrl, {
         timeout: 10000,
         headers: {
           'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
@@ -36,11 +102,11 @@ export class OpenGraphExtractorService {
 
       if (canonicalMatch && canonicalMatch[1]) {
         targetCanonicalUrl = canonicalMatch[1].replace(/&amp;/g, '&');
-      } else if (ogUrlMatch && ogUrlMatch[1] && url.includes('/share/')) {
+      } else if (ogUrlMatch && ogUrlMatch[1] && effectiveUrl.includes('/share/')) {
         targetCanonicalUrl = ogUrlMatch[1].replace(/&amp;/g, '&');
       }
 
-      if (targetCanonicalUrl && targetCanonicalUrl !== url) {
+      if (targetCanonicalUrl && targetCanonicalUrl !== effectiveUrl) {
         try {
           const canonicalRes = await axios.get(targetCanonicalUrl, {
             timeout: 10000,
@@ -128,140 +194,158 @@ export class OpenGraphExtractorService {
 
       // 5. Jina AI Reader (r.jina.ai): Lấy toàn văn bài viết sạch + khôi phục đầy đủ emoji + trích xuất album ảnh
       try {
-        const jinaUrl = `https://r.jina.ai/${targetCanonicalUrl || url}`;
-        const jinaRes = await axios.get(jinaUrl, { timeout: 8000 });
+        const jinaTargetUrl = targetCanonicalUrl || effectiveUrl || url;
+        const jinaUrl = `https://r.jina.ai/${jinaTargetUrl}`;
+        const jinaRes = await axios.get(jinaUrl, { timeout: 10000 });
         const jinaMarkdown = jinaRes.data;
 
         if (jinaMarkdown && typeof jinaMarkdown === 'string') {
-          // Bóc tách nội dung chính, loại bỏ hoàn toàn header rác
-          const mdLines = jinaMarkdown.split('\n');
-          const startIndex = mdLines.findIndex(l => l.startsWith('Markdown Content:'));
-          const contentAfterHeader = startIndex !== -1 ? mdLines.slice(startIndex + 1).join('\n') : jinaMarkdown;
+          if (this.isFacebookLoginWall(jinaMarkdown)) {
+            this.logger.warn(`Jina Reader hit Facebook login wall for ${jinaTargetUrl}. Discarding Jina content.`);
+          } else {
+            // Bóc tách nội dung chính, loại bỏ hoàn toàn header rác
+            const mdLines = jinaMarkdown.split('\n');
+            const startIndex = mdLines.findIndex(l => l.startsWith('Markdown Content:'));
+            const contentAfterHeader = startIndex !== -1 ? mdLines.slice(startIndex + 1).join('\n') : jinaMarkdown;
 
-          // Trích xuất ảnh poster/album CHỈ TRONG PHẠM VI BÀI VIẾT (trước All reactions / bình luận / feed khác)
-          const stopMarkers = ['All reactions:', 'Like\nComment', 'Top fan', 'See more from', 'Privacy · Terms'];
-          let postRawSection = contentAfterHeader;
-          for (const stop of stopMarkers) {
-            const stopIdx = postRawSection.indexOf(stop);
-            if (stopIdx !== -1) {
-              postRawSection = postRawSection.substring(0, stopIdx);
-            }
-          }
-
-          // A. Trích xuất fbid ảnh đính kèm từ chính phạm vi bài viết
-          const fbidRegex = /(?:photo(?:\.php)?\?(?:[^"\s\)]*&)?fbid=|lookaside\.fbsbx\.com\/lookaside\/crawler\/media\/\?media_id=|fbid=)(\d+)/g;
-          let fbMatch: RegExpExecArray | null;
-          const postImageUrls: string[] = [];
-          while ((fbMatch = fbidRegex.exec(postRawSection)) !== null) {
-            const id = fbMatch[1];
-            const imgUrl = `https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=${id}`;
-            if (!postImageUrls.includes(imgUrl) && !extractedImageUrls.includes(imgUrl)) {
-              postImageUrls.push(imgUrl);
-            }
-          }
-          // Giới hạn ảnh đính kèm bài viết tối đa 4 ảnh để tránh rò rỉ timeline
-          extractedImageUrls.push(...postImageUrls.slice(0, 4));
-
-          // 1) Khôi phục emoji gốc: ![Image \d+: 🔥] -> 🔥
-          let cleanMd = contentAfterHeader.replace(/!\[Image\s+\d+:\s*([^\]]+)\]\([^\)]+\)/g, (match, emojiText) => {
-            if (emojiText && !emojiText.includes('May be') && !emojiText.includes('image') && emojiText.length <= 8) {
-              return emojiText.trim() + ' ';
-            }
-            return '';
-          });
-
-          // 2) Xóa các thẻ ảnh rác còn lại
-          cleanMd = cleanMd
-            .replace(/!\[Image[^\]]*\]\([^\)]+\)/g, '')
-            .replace(/!Image\s+\d+/g, '');
-
-          // 3) Giải nén các link rút gọn l.facebook.com hoặc chuyển link markdown thành text sạch
-          cleanMd = cleanMd.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, (match, text, href) => {
-            if (text.startsWith('http')) return text;
-            if (href.includes('l.facebook.com/l.php?u=')) {
-              try {
-                const u = new URL(href).searchParams.get('u');
-                if (u) return u;
-              } catch {
-                // Ignore parse error
-              }
-            }
-            return text;
-          });
-
-          const lines = cleanMd.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-          const postLines: string[] = [];
-          let inPost = false;
-
-          for (const l of lines) {
-            // Bỏ qua các dòng rác ban đầu của Facebook
-            if (!inPost) {
-              const isHeaderBoilerplate =
-                l.includes('\'s Post') ||
-                l.match(/\d+\s*(?:days?|hours?|mins?|ngày|giờ|phút)\s*ago/i) ||
-                l.match(/^\[?\d+[dhmw]\]?/i) ||
-                l.startsWith('Log In') ||
-                l.startsWith('Forgot Account') ||
-                l.startsWith('###') ||
-                l.startsWith('* * *') ||
-                l.startsWith('## ') ||
-                l.startsWith('[](') ||
-                l.startsWith('·') ||
-                l === '·';
-
-              if (isHeaderBoilerplate) {
-                continue;
-              }
-
-              // Tiêu chí bắt đầu bài viết thực sự
-              if (
-                l.startsWith('🔥') ||
-                l.startsWith('🔴') ||
-                l.startsWith('🌱') ||
-                l.startsWith('⚡') ||
-                l.startsWith('📍') ||
-                l.includes('CHÍNH THỨC') ||
-                l.includes('NGÀY HỘI') ||
-                l.includes('TALKSHOW') ||
-                l.includes('CUỘC THI') ||
-                l.includes('ĐƯỜNG CHẠY') ||
-                l.includes('HỘI THẢO') ||
-                l.length > 25
-              ) {
-                inPost = true;
+            // Trích xuất ảnh poster/album CHỈ TRONG PHẠM VI BÀI VIẾT (trước All reactions / bình luận / feed khác)
+            const stopMarkers = ['All reactions:', 'Like\nComment', 'Top fan', 'See more from', 'Privacy · Terms'];
+            let postRawSection = contentAfterHeader;
+            for (const stop of stopMarkers) {
+              const stopIdx = postRawSection.indexOf(stop);
+              if (stopIdx !== -1) {
+                postRawSection = postRawSection.substring(0, stopIdx);
               }
             }
 
-            if (inPost) {
-              // Điểm dừng: các phần bình luận Facebook, phản ứng, hoặc link ảnh đính kèm cuối bài
-              if (
-                l.includes('All reactions:') ||
-                l.includes('Like\nComment') ||
-                (l.startsWith('View ') && l.includes('repl')) ||
-                l.startsWith('English') ||
-                l.startsWith('Log In') ||
-                l.startsWith('See more from') ||
-                l.includes('Top fan') ||
-                l.includes('Privacy · Terms') ||
-                l.includes('/photo/?fbid=') ||
-                l.includes('/photos/')
-              ) {
-                break;
+            // A. Trích xuất fbid ảnh đính kèm từ chính phạm vi bài viết
+            const fbidRegex = /(?:photo(?:\.php)?\?(?:[^"\s\)]*&)?fbid=|lookaside\.fbsbx\.com\/lookaside\/crawler\/media\/\?media_id=|fbid=)(\d+)/g;
+            let fbMatch: RegExpExecArray | null;
+            const postImageUrls: string[] = [];
+            while ((fbMatch = fbidRegex.exec(postRawSection)) !== null) {
+              const id = fbMatch[1];
+              const imgUrl = `https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=${id}`;
+              if (!postImageUrls.includes(imgUrl) && !extractedImageUrls.includes(imgUrl)) {
+                postImageUrls.push(imgUrl);
               }
-              postLines.push(l);
             }
-          }
+            // Giới hạn ảnh đính kèm bài viết tối đa 4 ảnh để tránh rò rỉ timeline
+            extractedImageUrls.push(...postImageUrls.slice(0, 4));
 
-          if (postLines.length >= 3) {
-            const fullJinaContent = postLines.join('\n\n');
-            if (fullJinaContent.length > 100) {
-              rawContent = fullJinaContent;
-              description = fullJinaContent;
+            // 1) Khôi phục emoji gốc: ![Image \d+: 🔥] -> 🔥
+            let cleanMd = contentAfterHeader.replace(/!\[Image\s+\d+:\s*([^\]]+)\]\([^\)]+\)/g, (match, emojiText) => {
+              if (emojiText && !emojiText.includes('May be') && !emojiText.includes('image') && emojiText.length <= 8) {
+                return emojiText.trim() + ' ';
+              }
+              return '';
+            });
+
+            // 2) Xóa các thẻ ảnh rác còn lại
+            cleanMd = cleanMd
+              .replace(/!\[Image[^\]]*\]\([^\)]+\)/g, '')
+              .replace(/!Image\s+\d+/g, '');
+
+            // 3) Giải nén các link rút gọn l.facebook.com hoặc chuyển link markdown thành text sạch
+            cleanMd = cleanMd.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, (match, text, href) => {
+              if (text.startsWith('http')) return text;
+              if (href.includes('l.facebook.com/l.php?u=')) {
+                try {
+                  const u = new URL(href).searchParams.get('u');
+                  if (u) return u;
+                } catch {
+                  // Ignore parse error
+                }
+              }
+              return text;
+            });
+
+            const lines = cleanMd.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            const postLines: string[] = [];
+            let inPost = false;
+
+            for (const l of lines) {
+              // Bỏ qua các dòng rác ban đầu của Facebook
+              if (!inPost) {
+                const isHeaderBoilerplate =
+                  l.includes('\'s Post') ||
+                  l.match(/\d+\s*(?:days?|hours?|mins?|ngày|giờ|phút)\s*ago/i) ||
+                  l.match(/^\[?\d+[dhmw]\]?/i) ||
+                  l.startsWith('Log In') ||
+                  l.startsWith('Forgot Account') ||
+                  l.startsWith('###') ||
+                  l.startsWith('* * *') ||
+                  l.startsWith('## ') ||
+                  l.startsWith('[](') ||
+                  l.startsWith('·') ||
+                  l === '·';
+
+                if (isHeaderBoilerplate) {
+                  continue;
+                }
+
+                // Tiêu chí bắt đầu bài viết thực sự
+                if (
+                  l.startsWith('🔥') ||
+                  l.startsWith('🔴') ||
+                  l.startsWith('🌱') ||
+                  l.startsWith('⚡') ||
+                  l.startsWith('📍') ||
+                  l.includes('CHÍNH THỨC') ||
+                  l.includes('NGÀY HỘI') ||
+                  l.includes('TALKSHOW') ||
+                  l.includes('CUỘC THI') ||
+                  l.includes('ĐƯỜNG CHẠY') ||
+                  l.includes('HỘI THẢO') ||
+                  l.length > 25
+                ) {
+                  inPost = true;
+                }
+              }
+
+              if (inPost) {
+                // Điểm dừng: các phần bình luận Facebook, phản ứng, hoặc link ảnh đính kèm cuối bài
+                if (
+                  l.includes('All reactions:') ||
+                  l.includes('Like\nComment') ||
+                  (l.startsWith('View ') && l.includes('repl')) ||
+                  l.startsWith('English') ||
+                  l.startsWith('Log In') ||
+                  l.startsWith('See more from') ||
+                  l.includes('Top fan') ||
+                  l.includes('Privacy · Terms') ||
+                  l.includes('/photo/?fbid=') ||
+                  l.includes('/photos/')
+                ) {
+                  break;
+                }
+                postLines.push(l);
+              }
+            }
+
+            if (postLines.length >= 3) {
+              const fullJinaContent = postLines.join('\n\n');
+              if (fullJinaContent.length > 100 && !this.isFacebookLoginWall(fullJinaContent)) {
+                rawContent = fullJinaContent;
+                description = fullJinaContent;
+              }
             }
           }
         }
       } catch {
         // Bỏ qua nếu Jina lỗi
+      }
+
+      // Kiểm tra nếu nội dung cuối cùng bị Facebook khóa bằng login wall
+      const loginWallDetected = this.isFacebookLoginWall(rawContent) && this.isFacebookLoginWall(description);
+      if (loginWallDetected) {
+        return {
+          title: 'Bài viết yêu cầu đăng nhập Facebook',
+          description: 'Facebook yêu cầu đăng nhập để xem bài viết này (bài viết riêng tư hoặc cần tài khoản). Vui lòng sử dụng tính năng "Dán trực tiếp nội dung bài viết" ở trên để AI phân tích và xếp loại ĐRL ngay lập tức!',
+          isBlockedByLoginWall: true,
+          posterImageUrl: undefined,
+          posterImages: [],
+          canonicalUrl: targetCanonicalUrl || effectiveUrl || undefined,
+        };
       }
 
       // Trích xuất poster chính (giới hạn tối đa 4 ảnh để tránh rò rỉ timeline)
@@ -273,7 +357,7 @@ export class OpenGraphExtractorService {
         description: description || rawContent,
         posterImageUrl,
         posterImages: finalPosterImages,
-        canonicalUrl: targetCanonicalUrl || undefined,
+        canonicalUrl: targetCanonicalUrl || effectiveUrl || undefined,
       };
     } catch (error) {
       // Fallback
@@ -289,6 +373,7 @@ export class OpenGraphExtractorService {
         description: '',
         posterImageUrl: fallbackImages[0] || undefined,
         posterImages: fallbackImages,
+        canonicalUrl: effectiveUrl || undefined,
       };
     }
   }

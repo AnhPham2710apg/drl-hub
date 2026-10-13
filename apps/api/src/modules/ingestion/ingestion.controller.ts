@@ -25,6 +25,27 @@ export class IngestionController {
     // 2. Trích xuất metadata OpenGraph
     const meta = await this.ogExtractor.extract(cleanUrl);
 
+    // Nếu bài viết bị Facebook chặn triệt để bằng Login Wall và người dùng chưa cung cấp nội dung thủ công
+    if (meta.isBlockedByLoginWall && !body.content) {
+      return {
+        originalUrl,
+        cleanUrl,
+        cleanUrlHash: hash,
+        title: meta.title,
+        description: meta.description,
+        isBlockedByLoginWall: true,
+        posterImageUrl: undefined,
+        posterImages: [],
+        suggestedClauses: [],
+        suggestedDeadline: undefined,
+        debateSummary: 'Facebook yêu cầu đăng nhập để xem bài viết này. Hệ thống không thể tự động trích xuất nội dung từ liên kết bị giới hạn đối tượng hoặc yêu cầu phiên đăng nhập.',
+        auditNotes: [
+          'Liên kết bị Facebook áp dụng Login Wall / Chặn bot thu thập dữ liệu.',
+          'Vui lòng copy và dán trực tiếp nội dung bài viết vào ô bên trên để AI phân tích và xếp loại ĐRL đầy đủ.',
+        ],
+      };
+    }
+
     // 3. Phân tích nội dung đa tác nhân (Multi-Agent Pipeline với Debate & Verification)
     const effectiveUrl = meta.canonicalUrl || cleanUrl;
     const combinedContent = `URL GỐC / FANPAGE SLUG: ${effectiveUrl}\nTIÊU ĐỀ: ${meta.title}\nNỘI DUNG CHI TIẾT:\n${body.content || meta.description}`;

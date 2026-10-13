@@ -104,6 +104,15 @@
       height: 52px;
       flex-shrink: 0;
     }
+
+    @media print {
+      header {
+        position: static !important;
+      }
+      .frosted-glass {
+        background: white !important;
+      }
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col selection:bg-blue-600 selection:text-white">
@@ -617,6 +626,23 @@
       <!-- Result Card: Luma Event Details Preview -->
       <div id="ingestResult" class="hidden bg-white rounded-3xl border border-slate-200/90 shadow-luma-card overflow-hidden transition-all duration-300">
         
+        <!-- Facebook Login Wall Notice Banner -->
+        <div id="loginWallWarningBanner" class="hidden p-4 sm:p-5 bg-amber-50 border-b border-amber-200/80 flex items-start space-x-3 text-amber-900">
+          <div class="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0 text-amber-700">
+            <i class="ph-bold ph-warning-circle text-lg"></i>
+          </div>
+          <div class="flex-1 text-xs">
+            <h4 class="font-bold text-amber-950 mb-0.5 text-sm">Facebook yêu cầu đăng nhập đối với bài viết này</h4>
+            <p class="text-amber-800 leading-relaxed mt-1">
+              Liên kết này bị giới hạn quyền riêng tư hoặc chặn bot tự động từ Facebook. Hệ thống đã mở sẵn ô <strong>"Nội dung bài viết"</strong> ở trên — bạn chỉ cần sao chép (copy) nội dung/caption bài viết từ Facebook và dán vào, sau đó bấm <strong>"Bóc tách"</strong> để tiếp tục trích xuất đầy đủ thông tin & tính điểm rèn luyện!
+            </p>
+            <button type="button" onclick="focusManualContentInput()" class="mt-2.5 inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow-xs transition">
+              <i class="ph-bold ph-pencil-simple text-xs"></i>
+              <span>Dán nội dung ngay</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Instagram-style Multi-Image Carousel Frame (Matches natural aspect ratio & swipeable like Instagram) -->
         <div id="posterContainer" class="hidden relative w-full bg-slate-950 flex flex-col items-center justify-center overflow-hidden group select-none">
           <!-- Background Blurred Glow for Vertical/Square Posters -->
@@ -1441,6 +1467,18 @@
       }
     }
 
+    function focusManualContentInput() {
+      const box = document.getElementById('manualContentBox');
+      const text = document.getElementById('btnManualContentToggleText');
+      const input = document.getElementById('manualContentInput');
+      if (box) box.classList.remove('hidden');
+      if (text) text.innerText = 'Ẩn ô dán nội dung';
+      if (input) {
+        input.focus();
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
     async function handleIngestPreview(customPayload) {
       const url = customPayload?.url || document.getElementById('fbUrlInput').value.trim();
       if (!url) return;
@@ -1471,6 +1509,18 @@
 
         loading.classList.add('hidden');
         resultCard.classList.remove('hidden');
+
+        // Hiển thị thông báo nếu bài viết bị Facebook khóa đăng nhập
+        const loginWallBanner = document.getElementById('loginWallWarningBanner');
+        if (data.isBlockedByLoginWall) {
+          if (loginWallBanner) loginWallBanner.classList.remove('hidden');
+          const box = document.getElementById('manualContentBox');
+          if (box) box.classList.remove('hidden');
+          const toggleText = document.getElementById('btnManualContentToggleText');
+          if (toggleText) toggleText.innerText = 'Ẩn ô dán nội dung';
+        } else {
+          if (loginWallBanner) loginWallBanner.classList.add('hidden');
+        }
 
         document.getElementById('cleanHashTag').innerText = (data.cleanUrlHash || '').substring(0, 10);
         

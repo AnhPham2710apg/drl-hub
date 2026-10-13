@@ -30,6 +30,7 @@ export interface IngestPreviewResponse {
   suggestedFormat?: string;
   debateSummary?: string;
   auditNotes?: string[];
+  isBlockedByLoginWall?: boolean;
 }
 
 export interface PublishEventRequest {
