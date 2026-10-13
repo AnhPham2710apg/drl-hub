@@ -213,29 +213,26 @@ export class OpenGraphExtractorService {
 
       // 5. Jina AI Reader (r.jina.ai): Lấy toàn văn bài viết sạch + khôi phục đầy đủ emoji + trích xuất album ảnh
       try {
-        const jinaTargetUrl = targetCanonicalUrl || effectiveUrl || url;
+        const jinaTargetUrl = effectiveUrl || targetCanonicalUrl || url;
         const jinaUrl = `https://r.jina.ai/${jinaTargetUrl}`;
-        const jinaRes = await axios.get(jinaUrl, { timeout: 10000 });
+        const jinaRes = await axios.get(jinaUrl, { timeout: 12000 });
         const jinaMarkdown = jinaRes.data;
 
         if (jinaMarkdown && typeof jinaMarkdown === 'string') {
-          if (this.isFacebookLoginWall(jinaMarkdown)) {
-            this.logger.warn(`Jina Reader hit Facebook login wall for ${jinaTargetUrl}. Discarding Jina content.`);
-          } else {
-            // Bóc tách nội dung chính, loại bỏ hoàn toàn header rác
-            const mdLines = jinaMarkdown.split('\n');
-            const startIndex = mdLines.findIndex(l => l.startsWith('Markdown Content:'));
-            const contentAfterHeader = startIndex !== -1 ? mdLines.slice(startIndex + 1).join('\n') : jinaMarkdown;
+          // Bóc tách nội dung chính, loại bỏ hoàn toàn header rác
+          const mdLines = jinaMarkdown.split('\n');
+          const startIndex = mdLines.findIndex(l => l.startsWith('Markdown Content:'));
+          const contentAfterHeader = startIndex !== -1 ? mdLines.slice(startIndex + 1).join('\n') : jinaMarkdown;
 
-            // Trích xuất ảnh poster/album CHỈ TRONG PHẠM VI BÀI VIẾT (trước All reactions / bình luận / feed khác)
-            const stopMarkers = ['All reactions:', 'Like\nComment', 'Top fan', 'See more from', 'Privacy · Terms'];
-            let postRawSection = contentAfterHeader;
-            for (const stop of stopMarkers) {
-              const stopIdx = postRawSection.indexOf(stop);
-              if (stopIdx !== -1) {
-                postRawSection = postRawSection.substring(0, stopIdx);
-              }
+          // Trích xuất ảnh poster/album CHỈ TRONG PHẠM VI BÀI VIẾT (trước All reactions / bình luận / feed khác)
+          const stopMarkers = ['All reactions:', 'Like\nComment', 'Top fan', 'See more from', 'Privacy · Terms'];
+          let postRawSection = contentAfterHeader;
+          for (const stop of stopMarkers) {
+            const stopIdx = postRawSection.indexOf(stop);
+            if (stopIdx !== -1) {
+              postRawSection = postRawSection.substring(0, stopIdx);
             }
+          }
 
             // A. Trích xuất fbid ảnh đính kèm từ chính phạm vi bài viết
             const fbidRegex = /(?:photo(?:\.php)?\?(?:[^"\s\)]*&)?fbid=|lookaside\.fbsbx\.com\/lookaside\/crawler\/media\/\?media_id=|fbid=)(\d+)/g;
@@ -309,6 +306,8 @@ export class OpenGraphExtractorService {
                   l.startsWith('🌱') ||
                   l.startsWith('⚡') ||
                   l.startsWith('📍') ||
+                  l.startsWith('💻') ||
+                  l.includes('💻') ||
                   l.includes('CHÍNH THỨC') ||
                   l.includes('NGÀY HỘI') ||
                   l.includes('TALKSHOW') ||
@@ -341,18 +340,38 @@ export class OpenGraphExtractorService {
               }
             }
 
-            if (postLines.length >= 3) {
+            if (postLines.length >= 1) {
               const fullJinaContent = postLines.join('\n\n');
-              if (fullJinaContent.length > 100 && !this.isFacebookLoginWall(fullJinaContent)) {
+              if (fullJinaContent.length > 80 && !this.isFacebookLoginWall(fullJinaContent)) {
                 rawContent = fullJinaContent;
                 description = fullJinaContent;
+
+                // Cập nhật lại title chính thức từ fullJinaContent
+                const talkshowMatch = fullJinaContent.match(/(?:TALK\s*SHOW|HỘI\s*THẢO|TỌA\s*ĐÀM|CHƯƠNG\s*TRÌNH|CUỘC\s*THI|CHIẾN\s*DỊCH|NGÀY\s*HỘI|ĐƯỜNG\s*CHẠY)[^–\n\r\.🌱🌟📚🔥]{3,100}[–\-:][^\n\r\.🌱🌟📚🔥]{3,100}/i);
+                if (talkshowMatch && talkshowMatch[0]) {
+                  title = talkshowMatch[0].trim();
+                } else {
+                  const bracketMatch = fullJinaContent.match(/\[([^\]]+)\]\s*([^\n\r]+)/);
+                  if (bracketMatch && bracketMatch[2] && bracketMatch[2].length > 10) {
+                    title = bracketMatch[2].trim();
+                  } else {
+                    const quotedMatch = fullJinaContent.match(/[“"\[]([^”"\]]{6,100})[”"\]]/);
+                    if (quotedMatch && quotedMatch[1] && quotedMatch[1].length > 10) {
+                      title = quotedMatch[1].trim();
+                    } else {
+                      const firstPostLine = postLines[0];
+                      if (firstPostLine && firstPostLine.length > 15 && firstPostLine.length < 150) {
+                        title = firstPostLine.replace(/^[🔥🔴🌱⚡📍💻\s*–\-]+/, '').trim();
+                      }
+                    }
+                  }
+                }
               }
             }
           }
+        } catch {
+          // Bỏ qua nếu Jina lỗi
         }
-      } catch {
-        // Bỏ qua nếu Jina lỗi
-      }
 
       // Kiểm tra nếu nội dung cuối cùng bị Facebook khóa bằng login wall
       const loginWallDetected = this.isFacebookLoginWall(rawContent) && this.isFacebookLoginWall(description);

@@ -105,4 +105,28 @@ describe('DrlClauseParserService (HCMUS Regulations)', () => {
     expect(result.suggestedCampus).toBe('cs2'); // Cơ sở 2
     expect(result.suggestedFormat).toBe('offline'); // Trực tiếp
   });
+
+  it('should accurately infer metadata and parse points for Math-CS online contest (Khoa Toán - Tin học / Chi hội 25TTH3 on MyAloha)', () => {
+    const text = `
+      [CHI HỘI 25TTH3] CUỘC THI TRỰC TUYẾN: “VIỆT NAM TRONG KỶ NGUYÊN SỐ”
+      Liên chi hội Khoa Toán - Tin học - Chi hội 25TTH3
+      Nhằm thiết thực hưởng ứng Ngày Chuyển đổi số Quốc gia 10/10...
+      Mỗi câu trả lời đúng được 1 điểm (thể lệ câu hỏi).
+      Được cộng 5 điểm rèn luyện (Nội dung 1).
+      Thời gian diễn ra: 13/10/2026 - 16/10/2026
+      Hình thức: Trực tuyến trên MyAloha
+      Link dự thi: https://myaloha.vn/ct/wuLlaj
+    `;
+    const result = service.parse(text);
+
+    expect(result.suggestedFaculty).toBe('toantin');
+    expect(result.suggestedOrgLevel).toBe('khoa');
+    expect(result.suggestedCampus).toBe('online');
+    expect(result.suggestedFormat).toBe('online');
+    expect(result.extractedRegistrationLink).toBe('https://myaloha.vn/ct/wuLlaj');
+    expect(result.extractedDeadline).toBe('16/10/2026');
+    const nd1 = result.detectedClauses.find((c) => c.clause === DrlClause.ND1_HOC_TAP);
+    expect(nd1).toBeDefined();
+    expect(nd1?.points).toBe(5);
+  });
 });

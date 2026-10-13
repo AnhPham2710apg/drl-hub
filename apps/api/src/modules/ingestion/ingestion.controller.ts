@@ -155,15 +155,31 @@ export class IngestionController {
       posterImageUrl: finalPoster,
       posterImages: proxiedImages,
       suggestedClauses,
-      suggestedDeadline: finalPayload?.registrationDeadline || ruleParsed.extractedDeadline,
-      extractedDate: finalPayload?.eventDate || ruleParsed.extractedDate,
-      extractedTime: finalPayload?.eventTime || ruleParsed.extractedTime,
-      extractedLocation: finalPayload?.location || ruleParsed.extractedLocation,
-      extractedRegistrationLink: finalPayload?.registrationLink || ruleParsed.extractedRegistrationLink,
-      suggestedFaculty: (finalPayload?.faculty && finalPayload.faculty !== 'all') ? finalPayload.faculty : (ruleParsed.suggestedFaculty || finalPayload?.faculty || 'all'),
-      suggestedOrgLevel: (finalPayload?.orgLevel && finalPayload.orgLevel !== 'truong') ? finalPayload.orgLevel : (ruleParsed.suggestedOrgLevel || finalPayload?.orgLevel || 'truong'),
-      suggestedCampus: finalPayload?.campus || ruleParsed.suggestedCampus,
-      suggestedFormat: finalPayload?.format || ruleParsed.suggestedFormat,
+      suggestedDeadline: !agentResult.critic.isAiResolved
+        ? (ruleParsed.extractedDeadline || finalPayload?.registrationDeadline)
+        : (finalPayload?.registrationDeadline || ruleParsed.extractedDeadline),
+      extractedDate: !agentResult.critic.isAiResolved
+        ? (ruleParsed.extractedDate || finalPayload?.eventDate)
+        : (finalPayload?.eventDate || ruleParsed.extractedDate),
+      extractedTime: !agentResult.critic.isAiResolved
+        ? (ruleParsed.extractedTime || finalPayload?.eventTime)
+        : (finalPayload?.eventTime || ruleParsed.extractedTime),
+      extractedLocation: !agentResult.critic.isAiResolved
+        ? (ruleParsed.extractedLocation || finalPayload?.location)
+        : (finalPayload?.location || ruleParsed.extractedLocation),
+      extractedRegistrationLink: ruleParsed.extractedRegistrationLink || finalPayload?.registrationLink,
+      suggestedFaculty: !agentResult.critic.isAiResolved
+        ? (ruleParsed.suggestedFaculty || (finalPayload?.faculty && finalPayload.faculty !== 'all' ? finalPayload.faculty : 'all'))
+        : ((finalPayload?.faculty && finalPayload.faculty !== 'all') ? finalPayload.faculty : (ruleParsed.suggestedFaculty || 'all')),
+      suggestedOrgLevel: !agentResult.critic.isAiResolved
+        ? (ruleParsed.suggestedOrgLevel || (finalPayload?.orgLevel && finalPayload.orgLevel !== 'truong' ? finalPayload.orgLevel : 'truong'))
+        : ((finalPayload?.orgLevel && finalPayload.orgLevel !== 'truong') ? finalPayload.orgLevel : (ruleParsed.suggestedOrgLevel || 'truong')),
+      suggestedCampus: !agentResult.critic.isAiResolved
+        ? (ruleParsed.suggestedCampus || finalPayload?.campus || 'cs1')
+        : (ruleParsed.suggestedCampus === 'online' ? 'online' : (finalPayload?.campus || ruleParsed.suggestedCampus || 'cs1')),
+      suggestedFormat: !agentResult.critic.isAiResolved
+        ? (ruleParsed.suggestedFormat || finalPayload?.format || 'offline')
+        : (ruleParsed.suggestedFormat === 'online' ? 'online' : (finalPayload?.format || ruleParsed.suggestedFormat || 'offline')),
       debateSummary: agentResult.critic.isAiResolved
         ? agentResult.critic.debateSummary
         : (ruleParsed.detectedClauses.length > 0 ? 'Đã đối soát thành công theo bộ quy chế ĐRL HCMUS.' : agentResult.critic.debateSummary),
