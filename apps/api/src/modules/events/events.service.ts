@@ -39,7 +39,9 @@ export class EventsService {
   private inMemoryEvents: any[] = [];
 
   constructor(private readonly prisma: PrismaService) {
-    this.seedDefaultEvents();
+    if (process.env.NODE_ENV !== 'test') {
+      this.seedDefaultEvents();
+    }
   }
 
   private seedDefaultEvents() {
