@@ -89,7 +89,7 @@ export class IngestionController {
 
     const finalRawImages = rawImages.slice(0, 4);
     const proxiedImages = finalRawImages.map(img => {
-      if (img.includes('lookaside.fbsbx.com')) {
+      if (img.includes('lookaside.fbsbx.com') || img.includes('fbsbx.com') || img.includes('fbcdn.net') || img.includes('facebook.com')) {
         return `/api/v1/events/proxy-image?url=${encodeURIComponent(img)}`;
       }
       return img;
@@ -207,31 +207,5 @@ export class IngestionController {
         : (ruleParsed.detectedClauses.length > 0 ? 'Đã đối soát thành công theo bộ quy chế ĐRL HCMUS.' : agentResult.critic.debateSummary),
       auditNotes: agentResult.critic.issuesFound,
     };
-  }
-
-  @Get('proxy-image')
-  async proxyImage(@Query('url') imageUrl: string, @Res() res: Response) {
-    if (!imageUrl) {
-      return res.status(400).send('Image URL is required');
-    }
-
-    try {
-      const axios = (await import('axios')).default;
-      const response = await axios.get(imageUrl, {
-        headers: {
-          'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
-          'Referer': 'https://www.facebook.com/',
-        },
-        responseType: 'stream',
-        timeout: 10000,
-      });
-
-      const contentType = String(response.headers['content-type'] || 'image/jpeg');
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-      response.data.pipe(res);
-    } catch (err: any) {
-      res.status(502).send('Failed to fetch remote image');
-    }
   }
 }

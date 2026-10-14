@@ -1432,6 +1432,26 @@
       });
     }
 
+    function safeImageUrl(url) {
+      if (!url) return '';
+      if ((url.includes('lookaside.fbsbx.com') || url.includes('fbsbx.com') || url.includes('fbcdn.net')) && !url.includes('/api/v1/events/proxy-image')) {
+        return `/api/v1/events/proxy-image?url=${encodeURIComponent(url)}`;
+      }
+      return url;
+    }
+
+    function handleImageError(imgEl) {
+      if (!imgEl || imgEl.dataset.fallbackApplied) return;
+      imgEl.dataset.fallbackApplied = 'true';
+      const fallbackImages = [
+        'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800',
+        'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800',
+        'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800',
+        'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800'
+      ];
+      imgEl.src = fallbackImages[Math.floor(Math.random() * fallbackImages.length)];
+    }
+
     // ==================== INSTAGRAM-STYLE MULTI-IMAGE CAROUSEL ====================
     let carouselImages = [];
     let currentCarouselIndex = 0;
@@ -1439,7 +1459,7 @@
     let touchEndX = 0;
 
     function setupCarouselImages(images) {
-      carouselImages = (images && images.length > 0) ? images : [];
+      carouselImages = (images && images.length > 0) ? images.map(safeImageUrl) : [];
       currentCarouselIndex = 0;
 
       const container = document.getElementById('posterContainer');
@@ -1462,7 +1482,7 @@
       // Inject Slides into Track
       track.innerHTML = carouselImages.map((imgSrc, idx) => `
         <div class="w-full flex-shrink-0 flex items-center justify-center p-2 sm:p-4">
-          <img src="${imgSrc}" alt="Ảnh ${idx + 1}" referrerpolicy="no-referrer"
+          <img src="${imgSrc}" alt="Ảnh ${idx + 1}" referrerpolicy="no-referrer" onerror="handleImageError(this)"
             class="max-h-[560px] w-auto max-w-full object-contain rounded-2xl shadow-md transition-transform duration-300">
         </div>
       `).join('');
@@ -1799,7 +1819,7 @@
 
     // Detail Carousel
     function setupDetailCarousel(images) {
-      detailCarouselImages = images || [];
+      detailCarouselImages = (images && images.length > 0) ? images.map(safeImageUrl) : [];
       currentDetailSlideIdx = 0;
 
       const wrapper = document.getElementById('detailCarouselWrapper');
@@ -1819,7 +1839,7 @@
 
       track.innerHTML = detailCarouselImages.map((src, i) => `
         <div class="w-full flex-shrink-0 flex items-center justify-center p-2 sm:p-4 bg-slate-950">
-          <img src="${src}" alt="Ảnh ${i + 1}" referrerpolicy="no-referrer"
+          <img src="${src}" alt="Ảnh ${i + 1}" referrerpolicy="no-referrer" onerror="handleImageError(this)"
             class="max-h-[520px] w-auto max-w-full object-contain rounded-2xl shadow-md">
         </div>
       `).join('');
@@ -2852,14 +2872,15 @@
 
       grid.innerHTML = items.map(item => {
         const isFav = isEventFavorite(item.id || item.originalPostUrl);
+        const posterUrl = safeImageUrl(item.posterImageUrl);
         return `
         <div class="bg-white rounded-3xl border border-slate-200/80 shadow-luma hover:shadow-luma-hover overflow-hidden flex flex-col justify-between transition-all duration-300 group cursor-pointer relative"
           onclick="openEventDetails('${item.id}')">
           <div>
             <!-- Poster / Cover Image -->
-            ${item.posterImageUrl ? `
+            ${posterUrl ? `
               <div class="h-44 w-full bg-slate-100 overflow-hidden relative">
-                <img src="${item.posterImageUrl}" referrerpolicy="no-referrer" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-103">
+                <img src="${posterUrl}" referrerpolicy="no-referrer" onerror="handleImageError(this)" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-103">
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950/50 via-transparent to-transparent"></div>
                 
                 <!-- DRL Badge & Multi-Photo Badge -->
