@@ -189,11 +189,6 @@
 
       <!-- Right Action: User Status / Quick Button / Login -->
       <div class="flex items-center space-x-2 flex-shrink-0">
-        <a href="/docs" target="_blank"
-          class="hidden sm:flex items-center space-x-1 text-xs font-medium text-slate-600 hover:text-slate-900 px-3 py-2 rounded-full hover:bg-slate-100 transition min-h-[44px] whitespace-nowrap">
-          <span>Docs</span>
-          <i class="ph ph-arrow-up-right text-[11px]"></i>
-        </a>
         
         <!-- Auth Profile / Login Button (Touch target >= 44px) -->
         <div id="authHeaderContainer" class="flex-shrink-0">
@@ -238,13 +233,9 @@
       <div class="space-y-4 pb-4 border-b border-slate-200/80">
         <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
-            <div class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-blue-700 text-xs font-semibold mb-2">
-              <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-              <span>Học kỳ II • 2025 - 2026</span>
-            </div>
             <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Sự kiện & Hoạt động ĐRL</h1>
-            <p class="text-sm text-slate-600 mt-1 max-w-[65ch] leading-relaxed">
-              Khám phá hoạt động tích lũy Điểm Rèn Luyện tại Trường ĐH Khoa học Tự nhiên, ĐHQG-HCM
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+              Khám phá và theo dõi hoạt động tích lũy Điểm Rèn Luyện tại HCMUS
             </p>
           </div>
 
@@ -580,6 +571,151 @@
     </div>
 
     <!-- ========================================================================= -->
+    <!-- TAB: EVENT DETAIL VIEW (Trang chi tiết sự kiện & Mở bài gốc Facebook)     -->
+    <!-- ========================================================================= -->
+    <div id="tabContent-detail" class="hidden max-w-3xl mx-auto space-y-6">
+      
+      <!-- Top Action Bar: Go Back & Quick Save -->
+      <div class="flex items-center justify-between pb-2">
+        <button type="button" onclick="goBackFromDetail()"
+          class="inline-flex items-center space-x-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-blue-600 bg-white hover:bg-slate-50 px-3.5 py-2 rounded-2xl border border-slate-200 shadow-xs transition active:scale-95">
+          <i class="ph-bold ph-arrow-left text-base"></i>
+          <span>Quay lại danh sách</span>
+        </button>
+
+        <div class="flex items-center space-x-2">
+          <button type="button" id="btnDetailFav" onclick="toggleDetailFavorite()"
+            class="w-10 h-10 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 flex items-center justify-center transition shadow-xs active:scale-90"
+            title="Yêu thích sự kiện">
+            <i id="detailFavIcon" class="ph-bold ph-heart text-base text-slate-600"></i>
+          </button>
+          <button type="button" id="btnDetailCal" onclick="addCurrentDetailToCalendar()"
+            class="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 text-xs font-bold transition shadow-xs">
+            <i class="ph-bold ph-calendar-plus text-sm text-emerald-600"></i>
+            <span class="hidden xs:inline">Thêm lịch</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Detail Card (Luma Card Style) -->
+      <div class="bg-white rounded-3xl border border-slate-200/90 shadow-luma overflow-hidden">
+        
+        <!-- Poster / Images Carousel -->
+        <div id="detailCarouselWrapper" class="relative w-full bg-slate-900 overflow-hidden">
+          <div id="detailCarouselTrack" class="flex transition-transform duration-300 ease-out">
+            <!-- Dynamically injected images -->
+          </div>
+          <button type="button" id="detailPrevBtn" onclick="prevDetailSlide()"
+            class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 hover:bg-white text-slate-800 flex items-center justify-center shadow-md backdrop-blur-md transition hidden z-10 active:scale-95">
+            <i class="ph-bold ph-caret-left text-base"></i>
+          </button>
+          <button type="button" id="detailNextBtn" onclick="nextDetailSlide()"
+            class="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 hover:bg-white text-slate-800 flex items-center justify-center shadow-md backdrop-blur-md transition hidden z-10 active:scale-95">
+            <i class="ph-bold ph-caret-right text-base"></i>
+          </button>
+          <div id="detailDotsContainer" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center space-x-1.5 z-10"></div>
+        </div>
+
+        <!-- Detail Information Body -->
+        <div class="p-6 sm:p-8 space-y-6">
+          
+          <!-- Badges -->
+          <div class="flex flex-wrap items-center gap-2" id="detailBadgesContainer">
+            <span id="detailClauseBadge" class="px-3 py-1 rounded-full text-xs font-black bg-blue-50 text-blue-700 border border-blue-200">
+              Nội dung 3 (+5đ)
+            </span>
+            <span id="detailFacultyBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Cấp Khoa
+            </span>
+            <span id="detailCampusBadge" class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+              CS1 (Q5)
+            </span>
+            <span id="detailFormatBadge" class="px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+              Trực tiếp
+            </span>
+          </div>
+
+          <!-- Title -->
+          <h1 id="detailTitle" class="text-xl sm:text-2xl font-black text-slate-900 leading-snug"></h1>
+
+          <!-- Structured Info Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/80 flex items-start space-x-3">
+              <div class="w-8 h-8 rounded-xl bg-white border border-slate-200/90 flex items-center justify-center text-amber-600 flex-shrink-0 shadow-xs">
+                <i class="ph-bold ph-hourglass-medium text-base"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <span class="font-bold block text-slate-800 text-[11px] uppercase tracking-wider">Hạn chót đăng ký</span>
+                <span id="detailDeadline" class="text-slate-700 font-semibold mt-0.5 block truncate">Đang cập nhật</span>
+              </div>
+            </div>
+
+            <div class="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/80 flex items-start space-x-3">
+              <div class="w-8 h-8 rounded-xl bg-white border border-slate-200/90 flex items-center justify-center text-blue-600 flex-shrink-0 shadow-xs">
+                <i class="ph-bold ph-calendar-blank text-base"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <span class="font-bold block text-slate-800 text-[11px] uppercase tracking-wider">Thời gian tổ chức</span>
+                <span id="detailDateTime" class="text-slate-700 font-semibold mt-0.5 block truncate">Đang cập nhật</span>
+              </div>
+            </div>
+
+            <div class="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/80 flex items-start space-x-3 sm:col-span-2">
+              <div class="w-8 h-8 rounded-xl bg-white border border-slate-200/90 flex items-center justify-center text-rose-600 flex-shrink-0 shadow-xs">
+                <i class="ph-bold ph-map-pin text-base"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <span class="font-bold block text-slate-800 text-[11px] uppercase tracking-wider">Địa điểm</span>
+                <p id="detailLocation" class="text-slate-700 font-semibold mt-0.5 break-words">Đang cập nhật</p>
+              </div>
+            </div>
+
+            <div id="detailRegLinkBox" class="bg-slate-50/80 rounded-2xl p-3.5 border border-slate-200/80 flex items-start space-x-3 sm:col-span-2">
+              <div class="w-8 h-8 rounded-xl bg-white border border-slate-200/90 flex items-center justify-center text-emerald-600 flex-shrink-0 shadow-xs">
+                <i class="ph-bold ph-link text-base"></i>
+              </div>
+              <div class="min-w-0 flex-1 flex items-center justify-between">
+                <div>
+                  <span class="font-bold block text-slate-800 text-[11px] uppercase tracking-wider">Link Form đăng ký</span>
+                  <a id="detailRegLink" href="#" target="_blank" class="text-blue-600 hover:underline font-semibold mt-0.5 block text-xs truncate max-w-sm">
+                    Mở form đăng ký
+                  </a>
+                </div>
+                <a id="btnDetailOpenForm" href="#" target="_blank"
+                  class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center space-x-1 flex-shrink-0">
+                  <span>Mở form</span>
+                  <i class="ph-bold ph-arrow-square-out text-xs"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Outbound Button: Xem bài viết gốc trên Facebook (Primary CTA) -->
+          <div class="pt-2">
+            <a id="detailFbDeepLink" href="#" target="_blank"
+              class="w-full py-3.5 px-6 rounded-2xl bg-[#1877F2] hover:bg-[#166fe5] active:scale-98 text-white font-bold text-sm shadow-md shadow-blue-500/20 flex items-center justify-center space-x-2 transition">
+              <i class="ph-bold ph-facebook-logo text-xl"></i>
+              <span>Xem bài viết gốc trên Facebook</span>
+              <i class="ph-bold ph-arrow-up-right text-base"></i>
+            </a>
+          </div>
+
+          <!-- Event Description -->
+          <div class="border-t border-slate-100 pt-5 space-y-2">
+            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+              Nội dung bài viết
+            </span>
+            <div id="detailDescription" class="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line break-words bg-slate-50/70 p-4 rounded-2xl border border-slate-200/60 font-normal">
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ========================================================================= -->
     <!-- TAB 2: LUMA SHARE TARGET INGESTION & CREATE EVENT                         -->
     <!-- ========================================================================= -->
     <div id="tabContent-share" class="hidden max-w-2xl mx-auto space-y-6">
@@ -590,8 +726,8 @@
           <i class="ph-bold ph-paper-plane-tilt text-2xl"></i>
         </div>
         <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Thêm sự kiện từ Facebook</h2>
-        <p class="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
-          Dán link bài viết fanpage hoặc bài chia sẻ. AI sẽ tự động phân tích OpenGraph, lọc tracking URL và tính điểm theo quy chế HCMUS.
+        <p class="text-xs text-slate-500 max-w-md mx-auto">
+          Dán link bài viết Facebook để tự động bóc tách thông tin và xếp loại ĐRL
         </p>
       </div>
 
@@ -613,8 +749,13 @@
             <input type="text" id="fbUrlInput"
               placeholder="https://www.facebook.com/photo.php?fbid=..."
               class="block w-full border-0 bg-transparent py-2 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none font-medium">
+            <button id="btnClearFbUrl" type="button" onclick="clearFbUrlInput()"
+              class="hidden p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-full transition flex-shrink-0"
+              title="Xóa link">
+              <i class="ph-bold ph-x text-sm"></i>
+            </button>
             <button onclick="handleIngestPreview()" id="btnIngest"
-              class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs sm:text-sm font-semibold rounded-xl transition shadow-sm flex items-center space-x-1.5 flex-shrink-0">
+              class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs sm:text-sm font-semibold rounded-xl transition shadow-sm flex items-center space-x-1.5 flex-shrink-0 ml-1">
               <span>Bóc tách</span>
               <i class="ph-bold ph-sparkle text-sm"></i>
             </button>
@@ -622,44 +763,12 @@
 
           <!-- Optional Manual Content Input (Dành cho các bài viết bị Facebook chặn crawler) -->
           <div id="manualContentBox" class="hidden pt-2 space-y-1.5 transition-all">
-            <label class="text-[11px] font-semibold text-slate-600 flex items-center justify-between">
-              <span>Nội dung bài viết (Tự động trích xuất hoặc dán thủ công nếu bài bị ẩn):</span>
-              <span class="text-slate-400 font-normal">Hỗ trợ nhận diện tự động ảnh Markdown</span>
+            <label class="text-[11px] font-semibold text-slate-600 block">
+              Nội dung bài viết (Tự động trích xuất hoặc dán thủ công nếu bài bị ẩn):
             </label>
             <textarea id="manualContentInput" rows="4"
-              placeholder="Dán toàn bộ nội dung bài viết Facebook hoặc kèm link ảnh markdown ![Image](...) vào đây nếu Facebook chặn cào..."
+              placeholder="Dán nội dung bài viết nếu Facebook yêu cầu đăng nhập..."
               class="w-full bg-slate-50/70 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition font-medium"></textarea>
-          </div>
-        </div>
-
-        <!-- Sample Link Pills (WAD03 Slide 16: Touch targets & clean flex-wrap) -->
-        <div class="space-y-2 pt-3 border-t border-slate-100">
-          <span class="text-slate-600 font-semibold text-xs block">Hoặc thử ngay với liên kết bài viết mẫu:</span>
-          <div class="flex flex-wrap items-center gap-2">
-            <button type="button" onclick="setMathCsLink()"
-              class="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-semibold transition text-xs flex items-center space-x-1.5 min-h-[40px] border border-indigo-200/80 active:scale-95 shadow-xs">
-              <i class="ph-bold ph-laptop text-sm text-indigo-600"></i>
-              <span>Việt Nam Kỷ Nguyên Số (Khoa Toán - Tin / MyAloha)</span>
-              <i class="ph-bold ph-arrow-right text-xs"></i>
-            </button>
-            <button type="button" onclick="setUpraceLink()"
-              class="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 font-semibold transition text-xs flex items-center space-x-1.5 min-h-[40px] border border-rose-200/80 active:scale-95 shadow-xs">
-              <i class="ph-bold ph-person-simple-run text-sm text-rose-600"></i>
-              <span>Đường chạy UPRACE (Phòng CTSV / Cấp Trường)</span>
-              <i class="ph-bold ph-arrow-right text-xs"></i>
-            </button>
-            <button type="button" onclick="setYouthLink()"
-              class="px-3 py-2 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-800 font-semibold transition text-xs flex items-center space-x-1.5 min-h-[40px] border border-violet-200/80 active:scale-95 shadow-xs">
-              <i class="ph-bold ph-sparkle text-sm text-violet-600"></i>
-              <span>Bật Tư Duy Số (NVHSV)</span>
-              <i class="ph-bold ph-arrow-right text-xs"></i>
-            </button>
-            <button type="button" onclick="setRealLink()"
-              class="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 font-semibold transition text-xs flex items-center space-x-1.5 min-h-[40px] border border-blue-200/80 active:scale-95 shadow-xs">
-              <i class="ph-bold ph-tree text-sm text-blue-600"></i>
-              <span>Hạt Giống Đỏ (Khoa Địa chất / CS2)</span>
-              <i class="ph-bold ph-arrow-right text-xs"></i>
-            </button>
           </div>
         </div>
 
@@ -1449,22 +1558,37 @@
     }
 
     // Navigation Tabs with URL Hash Routing (Slide 14-16: deep-linkable views)
+    const ALL_CONTENT_TABS = ['feed', 'detail', 'share', 'tracker'];
+
     function switchTab(tabId) {
-      if (!tabId || !['feed', 'share', 'tracker'].includes(tabId)) {
+      if (!tabId || !ALL_CONTENT_TABS.includes(tabId)) {
         tabId = 'feed';
       }
+
+      // Hide/Show content tabs ensuring absolute separation with no overlapping
+      ALL_CONTENT_TABS.forEach(t => {
+        const content = document.getElementById(`tabContent-${t}`);
+        if (content) {
+          if (t === tabId) {
+            content.classList.remove('hidden');
+          } else {
+            content.classList.add('hidden');
+          }
+        }
+      });
+
+      // Update Navigation Dock & Top Header pills
+      // When on 'detail', keep 'feed' (Khám phá) highlighted as parent section
+      const activeNavTab = (tabId === 'detail') ? 'feed' : tabId;
       ['feed', 'share', 'tracker'].forEach(t => {
         const btn = document.getElementById(`tabBtn-${t}`);
         const mobBtn = document.getElementById(`mobTabBtn-${t}`);
-        const content = document.getElementById(`tabContent-${t}`);
-        if (t === tabId) {
+        if (t === activeNavTab) {
           if (btn) btn.className = "px-4 py-2 rounded-full transition-all duration-200 pill-active flex items-center space-x-1.5";
-          if (mobBtn) mobBtn.className = "flex-1 py-2.5 px-2 flex flex-col items-center justify-center text-blue-600 font-bold transition text-xs";
-          if (content) content.classList.remove('hidden');
+          if (mobBtn) mobBtn.className = "flex-1 py-2 px-1 flex flex-col items-center justify-center text-blue-600 font-bold transition text-[11px] min-h-[48px] active:scale-95";
         } else {
           if (btn) btn.className = "px-4 py-2 rounded-full transition-all duration-200 pill-inactive flex items-center space-x-1.5";
-          if (mobBtn) mobBtn.className = "flex-1 py-2.5 px-2 flex flex-col items-center justify-center text-slate-500 font-medium transition text-xs hover:text-slate-900";
-          if (content) content.classList.add('hidden');
+          if (mobBtn) mobBtn.className = "flex-1 py-2 px-1 flex flex-col items-center justify-center text-slate-500 font-medium transition text-[11px] min-h-[48px] active:scale-95 hover:text-slate-900";
         }
       });
 
@@ -1472,62 +1596,297 @@
         history.replaceState(null, '', `#${tabId}`);
       }
 
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
       if (tabId === 'feed') loadEventsFeed();
       if (tabId === 'tracker') loadTrackerList();
     }
 
     window.addEventListener('DOMContentLoaded', () => {
       const hash = window.location.hash.replace('#', '');
-      if (['feed', 'share', 'tracker'].includes(hash)) {
+      if (ALL_CONTENT_TABS.includes(hash)) {
         switchTab(hash);
+      }
+
+      // Quick Clear button on Facebook URL input
+      const fbInput = document.getElementById('fbUrlInput');
+      const btnClear = document.getElementById('btnClearFbUrl');
+      if (fbInput && btnClear) {
+        fbInput.addEventListener('input', () => {
+          if (fbInput.value.trim().length > 0) {
+            btnClear.classList.remove('hidden');
+          } else {
+            btnClear.classList.add('hidden');
+          }
+        });
       }
     });
 
     window.addEventListener('hashchange', () => {
       const hash = window.location.hash.replace('#', '');
-      if (['feed', 'share', 'tracker'].includes(hash)) {
+      if (ALL_CONTENT_TABS.includes(hash)) {
         switchTab(hash);
       }
     });
 
-    function setMathCsLink() {
-      document.getElementById('fbUrlInput').value = "https://www.facebook.com/share/p/19snNvoSUM/";
-      handleIngestPreview();
+    function clearFbUrlInput() {
+      const input = document.getElementById('fbUrlInput');
+      const btn = document.getElementById('btnClearFbUrl');
+      if (input) {
+        input.value = '';
+        input.focus();
+      }
+      if (btn) btn.classList.add('hidden');
     }
 
-    function setUpraceLink() {
-      document.getElementById('fbUrlInput').value = "https://www.facebook.com/share/p/19fv7sjD8F/";
-      handleIngestPreview();
+    // ==================== EVENT DETAIL VIEW LOGIC ====================
+    let currentDetailEvent = null;
+    let detailCarouselImages = [];
+    let currentDetailSlideIdx = 0;
+    let detailTouchStartX = 0;
+    let detailTouchEndX = 0;
+
+    async function openEventDetails(eventId) {
+      let item = allFetchedEvents.find(e => String(e.id) === String(eventId) || e.originalPostUrl === eventId);
+
+      if (!item) {
+        try {
+          const res = await fetch(`/api/v1/events/${eventId}`);
+          if (res.ok) {
+            item = await res.json();
+          }
+        } catch (e) {
+          console.warn('Could not fetch detail from server:', e);
+        }
+      }
+
+      if (!item) {
+        alert('Không tìm thấy thông tin sự kiện');
+        return;
+      }
+
+      currentDetailEvent = item;
+
+      // Populate Title
+      document.getElementById('detailTitle').innerText = item.title || 'Sự kiện ĐRL HCMUS';
+
+      // Badges
+      const pts = item.pointsAwarded || 5;
+      const clauseNum = item.clauses?.[0]?.clauseNumber || item.criteriaMappings?.[0]?.criteriaId || 3;
+      const subClause = item.clauses?.[0]?.subClauseCode || item.criteriaMappings?.[0]?.subClauseCode;
+      const clauseText = subClause ? `Mục ${subClause} (+${pts}đ)` : `Nội dung ${clauseNum} (+${pts}đ)`;
+      document.getElementById('detailClauseBadge').innerText = clauseText;
+
+      const facBadge = document.getElementById('detailFacultyBadge');
+      if (item.faculty && item.faculty !== 'all') {
+        facBadge.innerText = `Khoa ${item.faculty.toUpperCase()}`;
+        facBadge.classList.remove('hidden');
+      } else {
+        facBadge.innerText = 'Toàn trường';
+        facBadge.classList.remove('hidden');
+      }
+
+      const campusBadge = document.getElementById('detailCampusBadge');
+      const campusMap = { cs1: 'CS1 (Q5)', cs2: 'CS2 (Dĩ An)', online: 'Online', external: 'Ngoài trường' };
+      campusBadge.innerText = campusMap[item.campus] || 'ĐHKHTN';
+
+      const formatBadge = document.getElementById('detailFormatBadge');
+      const formatMap = { offline: 'Trực tiếp', online: 'Online', hybrid: 'Hybrid' };
+      formatBadge.innerText = formatMap[item.format] || 'Trực tiếp';
+
+      // Deadline
+      document.getElementById('detailDeadline').innerText = item.registrationDeadline || 'Đang cập nhật';
+
+      // Date & Time
+      const dtEl = document.getElementById('detailDateTime');
+      if (item.eventDate && item.eventTime) {
+        dtEl.innerText = `${item.eventTime} • ${item.eventDate}`;
+      } else if (item.eventDate) {
+        dtEl.innerText = item.eventDate;
+      } else if (item.eventTime) {
+        dtEl.innerText = item.eventTime;
+      } else {
+        dtEl.innerText = 'Đang cập nhật';
+      }
+
+      // Location
+      const locMap = {
+        cs1: 'Cơ sở 1, 227 Nguyễn Văn Cừ, Phường 4, Quận 5, TP.HCM',
+        cs2: 'Cơ sở 2, Khu ĐHQG-HCM, Phường Linh Trung, TP. Thủ Đức',
+        online: 'Trực tuyến (MS Teams / Zoom)'
+      };
+      document.getElementById('detailLocation').innerText = item.location || locMap[item.campus] || 'Trường ĐH Khoa học Tự nhiên, ĐHQG-HCM';
+
+      // Registration Link Box
+      const regBox = document.getElementById('detailRegLinkBox');
+      const regLink = document.getElementById('detailRegLink');
+      const btnReg = document.getElementById('btnDetailOpenForm');
+      if (item.registrationLink) {
+        regBox.classList.remove('hidden');
+        regLink.href = item.registrationLink;
+        regLink.innerText = item.registrationLink;
+        btnReg.href = item.registrationLink;
+      } else {
+        regBox.classList.add('hidden');
+      }
+
+      // Facebook Deep Link CTA
+      const fbLink = document.getElementById('detailFbDeepLink');
+      fbLink.href = item.originalPostUrl || '#';
+      fbLink.onclick = () => {
+        fetch(`/api/v1/events/${item.id}/click`).catch(() => {});
+      };
+
+      // Description
+      document.getElementById('detailDescription').innerText = item.description || 'Không có mô tả chi tiết từ ban tổ chức.';
+
+      // Favorite state
+      updateDetailFavButton();
+
+      // Carousel of posters
+      const imgs = (item.images && item.images.length > 0)
+        ? item.images
+        : (item.posterImageUrl ? [item.posterImageUrl] : []);
+      setupDetailCarousel(imgs);
+
+      // Switch to detail view
+      switchTab('detail');
     }
 
-    function setRealLink() {
-      document.getElementById('fbUrlInput').value = "https://www.facebook.com/photo.php?fbid=1526825616138522&set=a.545830524238041&type=3&rdid=RQon08wjHXTv95q0&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1MLQ2Z8PdB#";
-      handleIngestPreview();
+    function goBackFromDetail() {
+      switchTab('feed');
     }
 
-    function setLibraryLink() {
-      document.getElementById('fbUrlInput').value = "https://www.facebook.com/share/p/19UK7GvF9g/";
-      handleIngestPreview();
+    function updateDetailFavButton() {
+      if (!currentDetailEvent) return;
+      const isFav = isEventFavorite(currentDetailEvent.id || currentDetailEvent.originalPostUrl);
+      const icon = document.getElementById('detailFavIcon');
+      const btn = document.getElementById('btnDetailFav');
+      if (isFav) {
+        if (icon) icon.className = "ph-fill ph-heart text-base text-rose-500";
+        if (btn) btn.className = "w-10 h-10 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-200 flex items-center justify-center transition shadow-xs active:scale-90";
+      } else {
+        if (icon) icon.className = "ph-bold ph-heart text-base text-slate-600";
+        if (btn) btn.className = "w-10 h-10 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 flex items-center justify-center transition shadow-xs active:scale-90";
+      }
     }
 
-    function setYouthLink() {
-      document.getElementById('fbUrlInput').value = "https://www.facebook.com/photo/?fbid=1518627976956831&set=pcb.1518629756956653";
-      // Chạy bóc tách đồng thời kèm payload content nếu cào trực tiếp gặp Facebook rate limit
-      const sampleText = `[NGÀY HỘI CHÀO MỪNG NĂM HỌC MỚI 2026 - 2027] BẬT TƯ DUY SỐ - MỞ LỘ TRÌNH XANH\n\nNgày hội Chào mừng năm học mới 2026 - 2027 với chủ đề “Bật tư duy số - Mở lộ trình xanh” sẽ chính thức diễn ra tại Trường THPT Phước Bửu, mang đến không gian trải nghiệm đa dạng, nơi các bạn học sinh được khám phá tri thức, phát huy tư duy sáng tạo và kết nối cùng bạn bè.\n\nCÙNG KHÁM PHÁ NHỮNG HOẠT ĐỘNG NỔI BẬT TẠI NGÀY HỘI!\n\n05 TRẠM SÓNG TRẢI NGHIỆM\n\n02 WORKSHOP CHUYÊN ĐỀ\n\nCUỘC THI RUNG CHUÔNG VÀNG\n\nGIAN HÀNG - QUÀ TẶNG - NHIỀU TRẢI NGHIỆM THÚ VỊ\n\nTHÔNG TIN NGÀY HỘI\n\nThời gian: Chủ nhật, ngày 11/10/2026\n\nĐịa điểm: Trường THPT Phước Bửu (Xã Hồ Tràm, TP. Hồ Chí Minh)\n\n#ChaoMungNamHocMoi2026#BatTuDuySoMoLoTrinhXanh#NhaVanhoaSinhvien#NVHSV#NgayHoiHocSinhSinhVien`;
-      
-      const sampleImages = [
-        "https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=1518627976956831",
-        "https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=1518627150290247",
-        "https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=1518628216956807",
-        "https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=1518627053623590",
-        "https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=1518627083623587"
-      ];
-      
-      handleIngestPreview({
-        url: "https://www.facebook.com/photo/?fbid=1518627976956831&set=pcb.1518629756956653",
-        content: sampleText,
-        posterImageUrl: sampleImages[0]
-      });
+    function toggleDetailFavorite() {
+      if (!currentDetailEvent) return;
+      toggleFavoriteEvent(
+        currentDetailEvent.id,
+        currentDetailEvent.originalPostUrl,
+        currentDetailEvent.title,
+        currentDetailEvent.pointsAwarded || 5,
+        currentDetailEvent.clauses?.[0]?.clauseNumber || 3,
+        currentDetailEvent.posterImageUrl || ''
+      );
+      updateDetailFavButton();
+    }
+
+    function addCurrentDetailToCalendar() {
+      if (!currentDetailEvent) return;
+      addEventToGoogleCalendar(
+        currentDetailEvent.title,
+        currentDetailEvent.registrationDeadline,
+        currentDetailEvent.description,
+        currentDetailEvent.campus,
+        currentDetailEvent.eventDate,
+        currentDetailEvent.eventTime,
+        currentDetailEvent.location
+      );
+    }
+
+    // Detail Carousel
+    function setupDetailCarousel(images) {
+      detailCarouselImages = images || [];
+      currentDetailSlideIdx = 0;
+
+      const wrapper = document.getElementById('detailCarouselWrapper');
+      const track = document.getElementById('detailCarouselTrack');
+      const prevBtn = document.getElementById('detailPrevBtn');
+      const nextBtn = document.getElementById('detailNextBtn');
+      const dots = document.getElementById('detailDotsContainer');
+
+      if (!wrapper || !track) return;
+
+      if (detailCarouselImages.length === 0) {
+        wrapper.classList.add('hidden');
+        return;
+      }
+
+      wrapper.classList.remove('hidden');
+
+      track.innerHTML = detailCarouselImages.map((src, i) => `
+        <div class="w-full flex-shrink-0 flex items-center justify-center p-2 sm:p-4 bg-slate-950">
+          <img src="${src}" alt="Ảnh ${i + 1}" referrerpolicy="no-referrer"
+            class="max-h-[520px] w-auto max-w-full object-contain rounded-2xl shadow-md">
+        </div>
+      `).join('');
+
+      if (detailCarouselImages.length > 1) {
+        prevBtn?.classList.remove('hidden');
+        nextBtn?.classList.remove('hidden');
+        if (dots) {
+          dots.classList.remove('hidden');
+          dots.innerHTML = detailCarouselImages.map((_, i) => `
+            <button type="button" onclick="setDetailSlide(${i})"
+              class="w-2 h-2 rounded-full transition-all duration-300 ${i === 0 ? 'bg-white scale-125' : 'bg-white/40 hover:bg-white/70'}">
+            </button>
+          `).join('');
+        }
+      } else {
+        prevBtn?.classList.add('hidden');
+        nextBtn?.classList.add('hidden');
+        if (dots) dots.classList.add('hidden');
+      }
+
+      track.ontouchstart = (e) => {
+        detailTouchStartX = e.changedTouches[0].screenX;
+      };
+      track.ontouchend = (e) => {
+        detailTouchEndX = e.changedTouches[0].screenX;
+        const diff = detailTouchEndX - detailTouchStartX;
+        if (diff > 45) prevDetailSlide();
+        else if (diff < -45) nextDetailSlide();
+      };
+
+      updateDetailCarouselView();
+    }
+
+    function updateDetailCarouselView() {
+      const track = document.getElementById('detailCarouselTrack');
+      const dots = document.getElementById('detailDotsContainer');
+      if (track) {
+        track.style.transform = `translateX(-${currentDetailSlideIdx * 100}%)`;
+      }
+      if (dots) {
+        const dotButtons = dots.querySelectorAll('button');
+        dotButtons.forEach((dot, idx) => {
+          if (idx === currentDetailSlideIdx) {
+            dot.className = "w-2.5 h-2.5 rounded-full bg-white scale-125 transition-all duration-300 shadow-sm";
+          } else {
+            dot.className = "w-2 h-2 rounded-full bg-white/40 hover:bg-white/70 transition-all duration-300";
+          }
+        });
+      }
+    }
+
+    function prevDetailSlide() {
+      if (detailCarouselImages.length <= 1) return;
+      currentDetailSlideIdx = (currentDetailSlideIdx - 1 + detailCarouselImages.length) % detailCarouselImages.length;
+      updateDetailCarouselView();
+    }
+
+    function nextDetailSlide() {
+      if (detailCarouselImages.length <= 1) return;
+      currentDetailSlideIdx = (currentDetailSlideIdx + 1) % detailCarouselImages.length;
+      updateDetailCarouselView();
+    }
+
+    function setDetailSlide(idx) {
+      currentDetailSlideIdx = idx;
+      updateDetailCarouselView();
     }
 
     function toggleManualContentBox() {
@@ -1725,6 +2084,43 @@
       }
     }
 
+    function resetShareTab() {
+      currentIngestData = null;
+      const fbInput = document.getElementById('fbUrlInput');
+      if (fbInput) fbInput.value = '';
+
+      const btnClear = document.getElementById('btnClearFbUrl');
+      if (btnClear) btnClear.classList.add('hidden');
+
+      const manualInput = document.getElementById('manualContentInput');
+      if (manualInput) manualInput.value = '';
+
+      const manualBox = document.getElementById('manualContentBox');
+      if (manualBox) manualBox.classList.add('hidden');
+
+      const manualToggleText = document.getElementById('btnManualContentToggleText');
+      if (manualToggleText) manualToggleText.innerText = 'Dán trực tiếp nội dung bài viết';
+
+      const resultCard = document.getElementById('ingestResult');
+      if (resultCard) resultCard.classList.add('hidden');
+
+      const warningBanner = document.getElementById('loginWallWarningBanner');
+      if (warningBanner) warningBanner.classList.add('hidden');
+
+      const btnPub = document.getElementById('btnPublishEvent');
+      if (btnPub) {
+        btnPub.disabled = false;
+        btnPub.innerHTML = '<i class="ph-bold ph-paper-plane-tilt text-base"></i> <span>Công bố sự kiện</span>';
+        btnPub.className = "h-12 px-5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-2xl font-bold text-xs sm:text-sm transition shadow-sm hover:shadow flex items-center justify-center space-x-2";
+      }
+
+      const btnBm = document.getElementById('btnBookmarkEvent');
+      if (btnBm) {
+        btnBm.disabled = false;
+        btnBm.innerHTML = '<i class="ph-bold ph-bookmark-simple text-base"></i> <span>Lưu Sổ tay ĐRL</span>';
+      }
+    }
+
     async function handlePublishEvent() {
       if (!currentIngestData) return;
       const btn = document.getElementById('btnPublishEvent');
@@ -1748,23 +2144,35 @@
             posterImageUrl: currentIngestData.posterImageUrl,
             images: currentIngestData.posterImages || (currentIngestData.posterImageUrl ? [currentIngestData.posterImageUrl] : []),
             registrationDeadline: currentIngestData.suggestedDeadline,
+            eventDate: currentIngestData.extractedDate,
+            eventTime: currentIngestData.extractedTime,
+            location: currentIngestData.extractedLocation,
+            registrationLink: currentIngestData.extractedRegistrationLink,
             faculty,
             orgLevel,
             campus,
             format,
-            clauses: (currentIngestData.suggestedClauses || []).map(c => ({ clauseNumber: c.clause, awardedPoints: c.points }))
+            clauses: (currentIngestData.suggestedClauses || []).map(c => ({
+              clauseNumber: c.clause,
+              awardedPoints: c.points,
+              subClauseCode: c.subClauseCode
+            }))
           })
         });
         const saved = await res.json();
-        currentIngestData.id = saved.id;
-        btn.innerHTML = '<i class="ph-bold ph-check text-base"></i> <span>Đã công bố</span>';
-        btn.className = "py-3 px-4 bg-emerald-600 text-white rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center space-x-1.5";
         
-        // Switch to feed to see the published event
-        setTimeout(() => switchTab('feed'), 800);
+        btn.innerHTML = '<i class="ph-bold ph-check text-base"></i> <span>Đã công bố</span>';
+        btn.className = "h-12 px-5 bg-emerald-600 text-white rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center space-x-2";
+        
+        // Auto reset share page and redirect to feed
+        setTimeout(() => {
+          resetShareTab();
+          switchTab('feed');
+          loadEventsFeed();
+        }, 600);
       } catch (err) {
         alert('Lỗi công bố: ' + err.message);
-        btn.innerHTML = '<i class="ph-bold ph-paper-plane-tilt"></i> <span>Công bố sự kiện</span>';
+        btn.innerHTML = '<i class="ph-bold ph-paper-plane-tilt text-base"></i> <span>Công bố sự kiện</span>';
       } finally {
         btn.disabled = false;
       }
@@ -2446,7 +2854,7 @@
         const isFav = isEventFavorite(item.id || item.originalPostUrl);
         return `
         <div class="bg-white rounded-3xl border border-slate-200/80 shadow-luma hover:shadow-luma-hover overflow-hidden flex flex-col justify-between transition-all duration-300 group cursor-pointer relative"
-          onclick="window.open('${item.originalPostUrl}', '_blank'); fetch('/api/v1/events/${item.id}/click');">
+          onclick="openEventDetails('${item.id}')">
           <div>
             <!-- Poster / Cover Image -->
             ${item.posterImageUrl ? `
@@ -2544,10 +2952,12 @@
                   <span class="hidden sm:inline">Lịch</span>
                 </button>
               </div>
-              <span class="text-blue-600 font-semibold flex items-center space-x-1 group-hover:translate-x-0.5 transition min-h-[36px]">
+              <a href="${item.originalPostUrl}" target="_blank"
+                onclick="event.stopPropagation(); fetch('/api/v1/events/${item.id}/click').catch(()=>{});"
+                class="text-blue-600 hover:text-blue-700 font-semibold flex items-center space-x-1 group-hover:translate-x-0.5 transition min-h-[36px]">
                 <span>Mở Facebook</span>
-                <i class="ph-bold ph-arrow-right text-[11px]"></i>
-              </span>
+                <i class="ph-bold ph-arrow-square-out text-xs"></i>
+              </a>
             </div>
           </div>
         </div>

@@ -19,4 +19,9 @@ export class EventsController {
   async trackClick(@Param('id') id: string) {
     return this.eventsService.findOneAndTrackClick(id);
   }
+
+  @Get(':id')
+  async getEventById(@Param('id') id: string) {
+    return this.eventsService.findById(id);
+  }
 }
