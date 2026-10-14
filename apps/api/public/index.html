@@ -1434,7 +1434,7 @@
 
     function safeImageUrl(url) {
       if (!url) return '';
-      if ((url.includes('lookaside.fbsbx.com') || url.includes('fbsbx.com') || url.includes('fbcdn.net')) && !url.includes('/api/v1/events/proxy-image')) {
+      if ((url.includes('lookaside.fbsbx.com') || url.includes('fbsbx.com') || url.includes('fbcdn.net') || url.includes('facebook.com')) && !url.includes('/api/v1/events/proxy-image')) {
         return `/api/v1/events/proxy-image?url=${encodeURIComponent(url)}`;
       }
       return url;
