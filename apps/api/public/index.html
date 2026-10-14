@@ -1708,7 +1708,8 @@
         // Clause
         if (data.suggestedClauses && data.suggestedClauses.length > 0) {
           const c = data.suggestedClauses[0];
-          document.getElementById('eventClauseBadge').innerText = `${c.clauseName} (+${c.points}đ)`;
+          const subText = c.subClauseCode ? `[Mục ${c.subClauseCode}] ` : '';
+          document.getElementById('eventClauseBadge').innerText = `${subText}${c.clauseName} (+${c.points}đ)`;
         } else {
           document.getElementById('eventClauseBadge').innerText = 'Chưa xác định';
         }

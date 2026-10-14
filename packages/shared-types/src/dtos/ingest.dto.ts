@@ -15,6 +15,7 @@ export interface IngestPreviewResponse {
   suggestedClauses: Array<{
     clause: DrlClause;
     clauseName: string;
+    subClauseCode?: string;
     subCategory?: string;
     confidence: number;
     points: number;

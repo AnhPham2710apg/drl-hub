@@ -50,6 +50,7 @@ export class MultiAgentCoordinatorService {
       campus: adjusted.campus || organization.campus,
       format: adjusted.format || organization.format,
       clauseNumber: adjusted.clauseNumber || drlPolicy.clauseNumber,
+      subClauseCode: adjusted.subClauseCode || drlPolicy.subClauseCode,
       awardedPoints: adjusted.awardedPoints || drlPolicy.awardedPoints,
       subCategory: drlPolicy.subCategory,
       registrationDeadline: adjusted.registrationDeadline || entities.registrationDeadline,

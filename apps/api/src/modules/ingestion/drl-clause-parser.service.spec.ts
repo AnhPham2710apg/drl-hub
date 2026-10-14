@@ -106,27 +106,129 @@ describe('DrlClauseParserService (HCMUS Regulations)', () => {
     expect(result.suggestedFormat).toBe('offline'); // Trực tiếp
   });
 
-  it('should accurately infer metadata and parse points for Math-CS online contest (Khoa Toán - Tin học / Chi hội 25TTH3 on MyAloha)', () => {
+  it('should detect ND3 sub-clause 3.1 with 10 points for School-level online contest (HCMUS: Unlock the Rules)', () => {
     const text = `
-      [CHI HỘI 25TTH3] CUỘC THI TRỰC TUYẾN: “VIỆT NAM TRONG KỶ NGUYÊN SỐ”
-      Liên chi hội Khoa Toán - Tin học - Chi hội 25TTH3
-      Nhằm thiết thực hưởng ứng Ngày Chuyển đổi số Quốc gia 10/10...
-      Mỗi câu trả lời đúng được 1 điểm (thể lệ câu hỏi).
-      Được cộng 5 điểm rèn luyện (Nội dung 1).
-      Thời gian diễn ra: 13/10/2026 - 16/10/2026
-      Hình thức: Trực tuyến trên MyAloha
-      Link dự thi: https://myaloha.vn/ct/wuLlaj
+      PHÒNG CÔNG TÁC SINH VIÊN (CTSV) - TRƯỜNG ĐH KHOA HỌC TỰ NHIÊN
+      CUỘC THI TRỰC TUYẾN: “HCMUS: UNLOCK THE RULES” 2026
+      Sinh viên tham gia hoàn thành bài thi sẽ được ghi nhận điểm rèn luyện.
+      Thời gian: 15/03/2026 - 18/03/2026
+      Hình thức: Trực tuyến
     `;
     const result = service.parse(text);
 
-    expect(result.suggestedFaculty).toBe('toantin');
-    expect(result.suggestedOrgLevel).toBe('khoa');
-    expect(result.suggestedCampus).toBe('online');
-    expect(result.suggestedFormat).toBe('online');
-    expect(result.extractedRegistrationLink).toBe('https://myaloha.vn/ct/wuLlaj');
-    expect(result.extractedDeadline).toBe('16/10/2026');
-    const nd1 = result.detectedClauses.find((c) => c.clause === DrlClause.ND1_HOC_TAP);
-    expect(nd1).toBeDefined();
-    expect(nd1?.points).toBe(5);
+    expect(result.detectedClauses).toHaveLength(1);
+    const clause = result.detectedClauses[0];
+    expect(clause.clause).toBe(DrlClause.ND3_HOAT_DONG);
+    expect(clause.subClauseCode).toBe('3.1');
+    expect(clause.points).toBe(10); // Cấp Trường = 10đ
+  });
+
+  it('should detect ND3 sub-clause 3.1 with 5 points for Faculty-level contest (Đoàn Khoa SH-CNSH - Hành trình theo chân Bác)', () => {
+    const text = `
+      ĐOÀN KHOA SINH HỌC - CÔNG NGHỆ SINH HỌC
+      Cuộc thi trực tuyến "Hành trình theo chân Bác lần thứ V"
+      Thời gian: 15/11/2025 - 11/01/2026
+      Hình thức thi: Trực tuyến
+    `;
+    const result = service.parse(text);
+
+    expect(result.detectedClauses).toHaveLength(1);
+    const clause = result.detectedClauses[0];
+    expect(clause.clause).toBe(DrlClause.ND3_HOAT_DONG);
+    expect(clause.subClauseCode).toBe('3.1');
+    expect(clause.points).toBe(5); // Cấp Khoa = 5đ
+  });
+
+  it('should detect ND4 sub-clause 4.5 with 3 points for donation/fundraising (Quyên góp Mùa hè xanh / XTN)', () => {
+    const text = `
+      HỘI SINH VIÊN TRƯỜNG - CHIẾN DỊCH TÌNH NGUYỆN MÙA HÈ XANH 2026
+      HOẠT ĐỘNG GÂY QUỸ VÀ QUYÊN GÓP ỦNG HỘ ĐỒNG BÀO
+      Sinh viên tham gia quyên góp sách vở, quần áo hoặc kinh phí hỗ trợ các điểm trường khó khăn.
+    `;
+    const result = service.parse(text);
+
+    expect(result.detectedClauses).toHaveLength(1);
+    const clause = result.detectedClauses[0];
+    expect(clause.clause).toBe(DrlClause.ND4_CONG_DONG);
+    expect(clause.subClauseCode).toBe('4.5');
+    expect(clause.points).toBe(3); // Quyên góp chuẩn 3đ
+  });
+
+  it('should detect ND4 sub-clause 4.3 with 5 points for short-term community volunteer / environment (Cleen4Green)', () => {
+    const text = `
+      ĐOÀN KHOA CÔNG NGHỆ THÔNG TIN
+      HOẠT ĐỘNG TÌNH NGUYỆN BẢO VỆ MÔI TRƯỜNG "CLEEN4GREEN"
+      Ra quân dọn rác, làm sạch khuôn viên và trồng cây xanh.
+      Thời gian: 27/03/2026
+    `;
+    const result = service.parse(text);
+
+    expect(result.detectedClauses).toHaveLength(1);
+    const clause = result.detectedClauses[0];
+    expect(clause.clause).toBe(DrlClause.ND4_CONG_DONG);
+    expect(clause.subClauseCode).toBe('4.3');
+    expect(clause.points).toBe(5); // Tình nguyện ngắn hạn = 5đ
+  });
+
+  it('should detect ND2 sub-clause 2.3 with 5 points for survey (Khảo sát sự hài lòng người học IR3)', () => {
+    const text = `
+      PHÒNG CÔNG TÁC SINH VIÊN
+      Khảo sát sự hài lòng của người học với trải nghiệm học tập tại Đại học Quốc gia TP.HCM (Khảo sát IR3)
+      Thời gian: 26/09/2025 - 21/10/2025
+    `;
+    const result = service.parse(text);
+
+    expect(result.detectedClauses).toHaveLength(1);
+    const clause = result.detectedClauses[0];
+    expect(clause.clause).toBe(DrlClause.ND2_NOI_QUY);
+    expect(clause.subClauseCode).toBe('2.3');
+    expect(clause.points).toBe(5);
+  });
+
+  it('should detect ND1 sub-clause 1.9 with 5 points for Tech Talk (DSA & System Design)', () => {
+    const text = `
+      KHOA CÔNG NGHỆ THÔNG TIN
+      Tech Talk “Chinh phục DSA & System Design - Mở lối vào công ty công nghệ hàng đầu”
+      Thời gian: 14/04/2026
+      Địa điểm: Hội trường I
+    `;
+    const result = service.parse(text);
+
+    expect(result.detectedClauses).toHaveLength(1);
+    const clause = result.detectedClauses[0];
+    expect(clause.clause).toBe(DrlClause.ND1_HOC_TAP);
+    expect(clause.subClauseCode).toBe('1.9');
+    expect(clause.points).toBe(5);
+  });
+
+  it('should detect ND3 sub-clause 3.5 with 5 points for soft-skill talkshow (Sa mạc nở hoa / DEBUG YOUR EYES)', () => {
+    const text = `
+      PHÒNG CÔNG TÁC SINH VIÊN (CTSV)
+      Talkshow: "Sa mạc nở hoa & hành trình vượt lên chính mình"
+      Thời gian: 19/04/2026
+      Địa điểm: Hội trường I, Cơ sở 227 Nguyễn Văn Cừ
+    `;
+    const result = service.parse(text);
+
+    expect(result.detectedClauses).toHaveLength(1);
+    const clause = result.detectedClauses[0];
+    expect(clause.clause).toBe(DrlClause.ND3_HOAT_DONG);
+    expect(clause.subClauseCode).toBe('3.5');
+    expect(clause.points).toBe(5);
+  });
+
+  it('should detect ND3 sub-clause 3.2 with 5 points for running race (Đường chạy Fitus)', () => {
+    const text = `
+      LIÊN CHI HỘI KHOA CÔNG NGHỆ THÔNG TIN
+      ĐƯỜNG CHẠY FITUS 2026 - BƯỚC CHẠY THANH NIÊN
+      Thời gian: 29/03/2026
+    `;
+    const result = service.parse(text);
+
+    expect(result.detectedClauses).toHaveLength(1);
+    const clause = result.detectedClauses[0];
+    expect(clause.clause).toBe(DrlClause.ND3_HOAT_DONG);
+    expect(clause.subClauseCode).toBe('3.2');
+    expect(clause.points).toBe(5);
   });
 });

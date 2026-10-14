@@ -129,6 +129,7 @@ export class IngestionController {
         {
           clause: finalPayload.clauseNumber as any,
           clauseName: HCMUS_DRL_CONFIG[finalPayload.clauseNumber as any]?.name || `Nội dung ${finalPayload.clauseNumber}`,
+          subClauseCode: finalPayload.subClauseCode || ruleParsed.detectedClauses[0]?.subClauseCode,
           subCategory: finalPayload.subCategory || 'Đánh giá tự động từ Multi-Agent',
           confidence: 0.99,
           points: finalPayload.awardedPoints,
@@ -139,6 +140,7 @@ export class IngestionController {
         {
           clause: finalPayload.clauseNumber as any,
           clauseName: HCMUS_DRL_CONFIG[finalPayload.clauseNumber as any]?.name || `Nội dung ${finalPayload.clauseNumber}`,
+          subClauseCode: finalPayload.subClauseCode || '3.5',
           subCategory: finalPayload.subCategory || 'Đánh giá tự động',
           confidence: 0.8,
           points: finalPayload.awardedPoints || 5,

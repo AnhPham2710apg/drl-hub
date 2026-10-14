@@ -46,9 +46,24 @@ export class CriticAgentService {
       }
     }
 
-    // 4. Kiểm tra trần điểm ĐRL
+    // 4. Kiểm tra trần điểm ĐRL và quy chế HCMUS
     if (drl.awardedPoints > 25) {
       issues.push(`Điểm ĐRL đề xuất (${drl.awardedPoints}đ) vượt quá giới hạn khung quy chế HCMUS. Cần điều chỉnh tối đa 25đ.`);
+    }
+
+    const isDonation = rawText.includes('quyên góp') || rawText.includes('gây quỹ') || rawText.includes('nuôi heo đất');
+    if (isDonation && drl.awardedPoints > 3) {
+      issues.push(`Hoạt động quyên góp / gây quỹ từ thiện tình nguyện theo quy chế HCMUS Mục 4.5 chỉ được 3 điểm ĐRL. Điểm hiện tại (${drl.awardedPoints}đ) cần chỉnh về 3đ.`);
+    }
+
+    const isBlood = rawText.includes('hiến máu');
+    if (isBlood && drl.awardedPoints !== 10) {
+      issues.push(`Hiến máu tình nguyện theo quy chế HCMUS Mục 4.2 được +10 điểm ĐRL. Điểm hiện tại (${drl.awardedPoints}đ) cần chỉnh thành 10đ.`);
+    }
+
+    const isSchoolOnlineContest = (rawText.includes('unlock the rules') || rawText.includes('vinh quang dưới cờ đảng') || rawText.includes('không một mình') || rawText.includes('nghị quyết 57')) && org.orgLevel === 'truong';
+    if (isSchoolOnlineContest && drl.awardedPoints < 10) {
+      issues.push(`Cuộc thi tìm hiểu / trực tuyến cấp Trường theo quy chế HCMUS Mục 3.1 được +10 điểm ĐRL. Cần điều chỉnh lên 10đ.`);
     }
 
     return issues;
@@ -81,13 +96,20 @@ Các quy tắc thẩm định nghiêm ngặt:
    - Trực tuyến -> 'online'
 3. NGUYÊN TẮC TIÊU ĐỀ:
    - Tiêu đề phải sạch sẽ, bảo toàn đúng tên sự kiện, không bị lẫn tên fanpage hay rác bài đăng.
+4. NGUYÊN TẮC ĐIỂM RÈN LUYỆN (HCMUS):
+   - Quyên góp, gây quỹ tình nguyện (Mục 4.5): chuẩn 3 điểm.
+   - Hiến máu tình nguyện (Mục 4.2): chuẩn 10 điểm.
+   - Cuộc thi trực tuyến cấp Trường (Mục 3.1): chuẩn 10 điểm. Cấp Khoa: chuẩn 5 điểm.
+   - Khảo sát người học, điều tra xã hội (Mục 2.3): chuẩn 5 điểm.
+   - Workshop kỹ năng, talkshow văn hóa, chuyên đề (Mục 3.5): chuẩn 5 điểm.
+   - Tech talk, chuyên đề học thuật, ôn thi (Mục 1.9): chuẩn 5 điểm.
+   - Tình nguyện vì cộng đồng ngắn hạn, Clean4Green, môi trường (Mục 4.3): chuẩn 5 điểm.
 `;
 
     const debatePrompt = `
 Nội dung bài viết gốc:
 ---
 ${content}
-Link đính kèm: ${url || ''}
 ---
 
 DỰ THẢO TỪ CÁC SPECIALIST AGENTS:
@@ -108,6 +130,7 @@ DỰ THẢO TỪ CÁC SPECIALIST AGENTS:
 
 3. DRL Policy Agent:
    - Clause: ND${drl.clauseNumber}
+   - SubClause: "${drl.subClauseCode || 'N/A'}"
    - Points: +${drl.awardedPoints}đ
    - SubCategory: "${drl.subCategory}"
 
@@ -128,6 +151,7 @@ Trả về JSON schema:
     "campus": "cs1" | "cs2" | "external" | "online" | null,
     "format": "offline" | "online" | "hybrid" | null,
     "clauseNumber": number | null,
+    "subClauseCode": string | null,
     "awardedPoints": number | null,
     "registrationDeadline": string | null,
     "eventDate": string | null,

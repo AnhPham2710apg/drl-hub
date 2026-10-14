@@ -20,6 +20,7 @@ export interface OrgClassificationOutput {
 
 export interface DrlPolicyOutput {
   clauseNumber: number; // 1..5
+  subClauseCode?: string; // Ví dụ: '3.1', '3.5', '1.9', '4.5', '4.3', '4.2', '2.3', '1.8'
   awardedPoints: number;
   subCategory: string;
   rationale: string;
@@ -36,6 +37,7 @@ export interface CriticReviewOutput {
     campus?: OrgClassificationOutput['campus'];
     format?: OrgClassificationOutput['format'];
     clauseNumber?: number;
+    subClauseCode?: string;
     awardedPoints?: number;
     registrationDeadline?: string;
     eventDate?: string;
@@ -57,6 +59,7 @@ export interface MultiAgentOrchestrationResult {
     campus: string;
     format: string;
     clauseNumber: number;
+    subClauseCode?: string;
     awardedPoints: number;
     subCategory: string;
     registrationDeadline?: string;
