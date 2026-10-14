@@ -56,13 +56,19 @@ export class OpenGraphExtractorService {
     if (nextMatch) {
       try {
         const decodedNext = decodeURIComponent(nextMatch[1]);
-        if (decodedNext.includes('permalink.php') || decodedNext.includes('/posts/')) {
+        if (decodedNext.includes('permalink.php') || decodedNext.includes('/posts/') || decodedNext.includes('set=pcb.')) {
           targetUrl = decodedNext;
         }
       } catch {}
     }
 
-    // 3. Chuyển đổi permalink.php?story_fbid=...&id=... hoặc story.php thành dạng /posts/ canonical chuẩn hóa
+    // 3. Chuyển đổi link ảnh có set=pcb.<id> thành dạng direct post URL
+    const pcbMatch = targetUrl.match(/set=pcb\.(\d+)/);
+    if (pcbMatch) {
+      targetUrl = `https://www.facebook.com/${pcbMatch[1]}`;
+    }
+
+    // 4. Chuyển đổi permalink.php?story_fbid=...&id=... hoặc story.php thành dạng /posts/ canonical chuẩn hóa
     if (targetUrl.includes('permalink.php') || targetUrl.includes('story.php')) {
       const storyFbidMatch = targetUrl.match(/story_fbid=([^&]+)/);
       const idMatch = targetUrl.match(/[?&]id=(\d+)/);
@@ -92,6 +98,91 @@ export class OpenGraphExtractorService {
     ];
     const matchCount = loginMarkers.filter(m => lower.includes(m)).length;
     return matchCount >= 1;
+  }
+
+  private readonly GOOGLEBOT_UA = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
+
+  /**
+   * Bóc tách toàn văn bài viết đầy đủ 100% qua Googlebot Crawler của Facebook.
+   * Facebook cung cấp toàn văn bài viết trong các thẻ div[dir="auto"] cho search engine bots,
+   * triệt tiêu hoàn toàn rào cản cắt cụt "..." của thẻ og:description.
+   */
+  async extractWithGooglebot(url: string): Promise<{
+    fullText: string;
+    title?: string;
+    images?: string[];
+  } | null> {
+    try {
+      const res = await axios.get(url, {
+        headers: {
+          'User-Agent': this.GOOGLEBOT_UA,
+          'Accept-Language': 'vi,en;q=0.9',
+        },
+        timeout: 10000,
+        maxRedirects: 5,
+        validateStatus: () => true,
+      });
+
+      if (!res.data || typeof res.data !== 'string') return null;
+      const html = res.data;
+      const $ = cheerio.load(html);
+
+      // Thay thế br, div, p để bảo toàn xuống hàng chính xác
+      $('br').replaceWith('\n');
+      $('div').each((_, el) => { $(el).append('\n'); });
+      $('p').each((_, el) => { $(el).append('\n\n'); });
+
+      // Trích xuất tất cả text trong các thẻ dir="auto"
+      const textBlocks: string[] = [];
+      $('div[dir="auto"], span[dir="auto"]').each((_, el) => {
+        const t = $(el).text().trim();
+        if (t.length > 30 && !textBlocks.includes(t)) {
+          if (
+            !t.includes('Đăng nhập') &&
+            !t.includes('Tạo tài khoản') &&
+            !t.includes('người theo dõi') &&
+            !t.includes('Cookie') &&
+            !t.includes('Xem thêm trên Facebook') &&
+            !t.includes('Quên mật khẩu')
+          ) {
+            textBlocks.push(t);
+          }
+        }
+      });
+
+      let longest = '';
+      for (const b of textBlocks) {
+        if (b.length > longest.length) longest = b;
+      }
+
+      // Làm sạch dòng trống thừa
+      const cleanedText = longest
+        .split('\n')
+        .map(l => l.trim())
+        .filter((l, i, arr) => !(l === '' && arr[i - 1] === ''))
+        .join('\n');
+
+      const images: string[] = [];
+      $('meta[property="og:image"]').each((_, el) => {
+        const c = $(el).attr('content');
+        if (c && !images.includes(c)) images.push(c);
+      });
+
+      const ogTitle = $('meta[property="og:title"]').attr('content') || $('title').text().trim();
+
+      if (cleanedText.length > 50) {
+        return {
+          fullText: cleanedText,
+          title: ogTitle,
+          images,
+        };
+      }
+
+      return null;
+    } catch (err: any) {
+      this.logger.warn(`Googlebot extraction failed for ${url}: ${err.message}`);
+      return null;
+    }
   }
 
   async extract(url: string): Promise<ExtractedMetadata> {
@@ -141,6 +232,21 @@ export class OpenGraphExtractorService {
         }
       }
 
+      // 2.5. Trích xuất toàn văn bài viết bằng Googlebot User-Agent (Vượt qua giới hạn cắt cụt ... của Facebook)
+      let googlebotContent = '';
+      const isFbUrl = effectiveUrl.includes('facebook.com') || effectiveUrl.includes('fb.watch');
+      if (isFbUrl) {
+        const gbot = await this.extractWithGooglebot(targetCanonicalUrl || effectiveUrl);
+        if (gbot && gbot.fullText && gbot.fullText.length > 80) {
+          googlebotContent = gbot.fullText;
+          if (gbot.images) {
+            for (const img of gbot.images) {
+              if (!extractedImageUrls.includes(img)) extractedImageUrls.push(img);
+            }
+          }
+        }
+      }
+
       // 3. Trích xuất Title & Caption đầy đủ
       // Kiểm tra xem Facebook có đính kèm toàn văn bài viết kèm emoji trong script CometSinglePostDialogRoot không:
       let embeddedFullText = '';
@@ -159,41 +265,48 @@ export class OpenGraphExtractorService {
       let ogDesc = $('meta[property="og:description"]').attr('content') || $('meta[name="description"]').attr('content') || '';
       ogDesc = ogDesc.replace(/\s*\|\s*Facebook$/i, '').trim();
 
-      let rawContent = embeddedFullText || ogTitle;
+      let rawContent = googlebotContent || embeddedFullText || ogTitle;
       const isTitleJustPageName = ogTitle.length < 90 && (
         /trường|khoa|thư\s*viện|đoàn|hội|clb|liên\s*chi\s*hội|hcmus/i.test(ogTitle) ||
         ogDesc.length > ogTitle.length
       );
 
-      if (!embeddedFullText && isTitleJustPageName && ogDesc.length > 20) {
+      if (!googlebotContent && !embeddedFullText && isTitleJustPageName && ogDesc.length > 20) {
         rawContent = ogDesc;
       }
 
-      // Lọc sạch mẩu cụt tên fanpage bị Facebook nén dính ở đầu bài (ví dụ: 'Đoàn - ')
-      rawContent = rawContent.replace(/^(?:đoàn\s*[-–—]\s*|hội\s*[-–—]\s*|clb\s*[-–—]\s*)/i, '').trim();
+      // Lọc sạch mẩu cụt tên fanpage bị Facebook nén dính ở đầu bài (ví dụ: 'Đoàn - ') nếu không phải googlebot content
+      if (!googlebotContent) {
+        rawContent = rawContent.replace(/^(?:đoàn\s*[-–—]\s*|hội\s*[-–—]\s*|clb\s*[-–—]\s*)/i, '').trim();
+      }
 
       // Chuẩn hóa bài viết: Thêm xuống hàng tự nhiên trước các emoji mục tiêu rõ ràng
       let formattedDescription = rawContent;
-      if (rawContent) {
+      if (rawContent && !googlebotContent) {
         formattedDescription = rawContent
           .replace(/([^\n])\s*(🎙️|🎤|💬|🎁|📍|📅|⏰|⚡|🏃‍♂️|🏃|🔥|🏅|🏆|🥇|🥈|🥉|📌|🌱Đăng|🌱 Hạt|📚|🌟|🤖|THỜI GIAN|ĐỊA ĐIỂM)/g, '$1\n\n$2')
           .replace(/([^\n])\s*(Đến với Hạt Giống Đỏ|Khi tham gia chương trình|Chủ đề:|TALKSHOW|THÔNG TIN SỰ KIỆN|QUYỀN LỢI VÀ CƠ CẤU|Bảng vàng giải thưởng)/g, '$1\n\n$2');
       }
 
-      let title = rawContent;
+      let title = ogTitle;
       let description = formattedDescription || ogDesc || rawContent;
 
       if (rawContent.length > 50) {
-        const talkshowMatch = rawContent.match(/(?:TALK\s*SHOW|HỘI\s*THẢO|TỌA\s*ĐÀM|CHƯƠNG\s*TRÌNH|CUỘC\s*THI|CHIẾN\s*DỊCH|NGÀY\s*HỘI|ĐƯỜNG\s*CHẠY)[^–\n\r\.🌱🌟📚🔥]{5,100}[–\-:][^\n\r\.🌱🌟📚🔥]{5,100}/i);
+        const talkshowMatch = rawContent.match(/(?:TALK\s*SHOW|HỘI\s*THẢO|TỌA\s*ĐÀM|CHƯƠNG\s*TRÌNH|CUỘC\s*THI|CHIẾN\s*DỊCH|NGÀY\s*HỘI|ĐƯỜNG\s*CHẠY)[^–\n\r\.🌱🌟📚🔥]{3,100}[–\-:][^\n\r\.🌱🌟📚🔥]{3,100}/i);
         if (talkshowMatch && talkshowMatch[0]) {
           title = talkshowMatch[0].trim();
         } else {
-          const quotedMatch = rawContent.match(/[“"\[]([^”"\]]+)[”"\]]/);
-          if (quotedMatch && quotedMatch[1] && quotedMatch[1].length > 10) {
-            title = quotedMatch[1].trim();
+          const bracketMatch = rawContent.match(/\[([^\]]+)\]\s*([^\n\r]+)/);
+          if (bracketMatch && bracketMatch[2] && bracketMatch[2].length > 5) {
+            title = `[${bracketMatch[1].trim()}] ${bracketMatch[2].trim()}`;
           } else {
-            const firstLine = rawContent.split(/\n|🌱|🔴|📚|🌟|🎤|🔥/)[0].trim();
-            title = firstLine.length > 15 ? firstLine : rawContent.substring(0, 80).trim();
+            const quotedMatch = rawContent.match(/[“"\[]([^”"\]]{6,100})[”"\]]/);
+            if (quotedMatch && quotedMatch[1] && quotedMatch[1].length > 10) {
+              title = quotedMatch[1].trim();
+            } else {
+              const firstLine = rawContent.split(/\n|🌱|🔴|📚|🌟|🎤|🔥/)[0].trim();
+              title = firstLine.length > 15 && firstLine.length < 150 ? firstLine : (ogTitle || rawContent.substring(0, 80).trim());
+            }
           }
         }
       }
@@ -211,8 +324,9 @@ export class OpenGraphExtractorService {
         if (!extractedImageUrls.includes(fbidUrl)) extractedImageUrls.push(fbidUrl);
       }
 
-      // 5. Jina AI Reader (r.jina.ai): Lấy toàn văn bài viết sạch + khôi phục đầy đủ emoji + trích xuất album ảnh
-      try {
+      // 5. Jina AI Reader (r.jina.ai): Fallback nếu Googlebot chưa bóc tách đủ
+      if (!googlebotContent || googlebotContent.length < 200) {
+        try {
         const jinaTargetUrl = effectiveUrl || targetCanonicalUrl || url;
         const jinaUrl = `https://r.jina.ai/${jinaTargetUrl}`;
         const jinaRes = await axios.get(jinaUrl, { timeout: 12000 });
@@ -372,9 +486,10 @@ export class OpenGraphExtractorService {
         } catch {
           // Bỏ qua nếu Jina lỗi
         }
+      }
 
       // Kiểm tra nếu nội dung cuối cùng bị Facebook khóa bằng login wall
-      const loginWallDetected = this.isFacebookLoginWall(rawContent) && this.isFacebookLoginWall(description);
+      const loginWallDetected = !googlebotContent && this.isFacebookLoginWall(rawContent) && this.isFacebookLoginWall(description);
       if (loginWallDetected) {
         return {
           title: 'Bài viết yêu cầu đăng nhập Facebook',

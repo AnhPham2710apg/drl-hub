@@ -35,6 +35,13 @@ describe('OpenGraphExtractorService', () => {
         'https://www.facebook.com/61582622519868/posts/pfbid0jPJFuHqhNQrsBAsR4x3G53UvSCSVmTYdi7NtrcFsAQzcQfvUp7LzkFhW3Pw5wHJLl/',
       );
     });
+
+    it('should resolve photo URLs with set=pcb.<id> to direct post ID URL', async () => {
+      const pcbUrl =
+        'https://www.facebook.com/photo/?fbid=1518627976956831&set=pcb.1518629756956653';
+      const resolved = await service.resolveFacebookUrl(pcbUrl);
+      expect(resolved).toBe('https://www.facebook.com/1518629756956653');
+    });
   });
 
   describe('isFacebookLoginWall', () => {

@@ -168,12 +168,32 @@ export class IngestionController {
         ? (ruleParsed.extractedLocation || finalPayload?.location)
         : (finalPayload?.location || ruleParsed.extractedLocation),
       extractedRegistrationLink: ruleParsed.extractedRegistrationLink || finalPayload?.registrationLink,
-      suggestedFaculty: !agentResult.critic.isAiResolved
-        ? (ruleParsed.suggestedFaculty || (finalPayload?.faculty && finalPayload.faculty !== 'all' ? finalPayload.faculty : 'all'))
-        : ((finalPayload?.faculty && finalPayload.faculty !== 'all') ? finalPayload.faculty : (ruleParsed.suggestedFaculty || 'all')),
-      suggestedOrgLevel: !agentResult.critic.isAiResolved
-        ? (ruleParsed.suggestedOrgLevel || (finalPayload?.orgLevel && finalPayload.orgLevel !== 'truong' ? finalPayload.orgLevel : 'truong'))
-        : ((finalPayload?.orgLevel && finalPayload.orgLevel !== 'truong') ? finalPayload.orgLevel : (ruleParsed.suggestedOrgLevel || 'truong')),
+      suggestedFaculty: (() => {
+        const fullContent = `${body.content || ''} ${meta.description || ''} ${meta.title || ''}`;
+        if (ruleParsed.suggestedFaculty === 'all' && /nhà\s*văn\s*hóa\s*sinh\s*viên|\bnvhsv\b|phòng\s*ctsv|phòng\s*công\s*tác\s*sinh\s*viên|đoàn\s*trường/i.test(fullContent)) {
+          return 'all';
+        }
+        if (ruleParsed.suggestedFaculty && ruleParsed.suggestedFaculty !== 'all') {
+          return ruleParsed.suggestedFaculty;
+        }
+        if (finalPayload?.faculty) {
+          return finalPayload.faculty;
+        }
+        return ruleParsed.suggestedFaculty || 'all';
+      })(),
+      suggestedOrgLevel: (() => {
+        const fullContent = `${body.content || ''} ${meta.description || ''} ${meta.title || ''}`;
+        if (ruleParsed.suggestedOrgLevel === 'truong' && /nhà\s*văn\s*hóa\s*sinh\s*viên|\bnvhsv\b|phòng\s*ctsv|phòng\s*công\s*tác\s*sinh\s*viên|đoàn\s*trường/i.test(fullContent)) {
+          return 'truong';
+        }
+        if (ruleParsed.suggestedOrgLevel) {
+          return ruleParsed.suggestedOrgLevel;
+        }
+        if (finalPayload?.orgLevel) {
+          return finalPayload.orgLevel;
+        }
+        return 'truong';
+      })(),
       suggestedCampus: !agentResult.critic.isAiResolved
         ? (ruleParsed.suggestedCampus || finalPayload?.campus || 'cs1')
         : (ruleParsed.suggestedCampus === 'online' ? 'online' : (finalPayload?.campus || ruleParsed.suggestedCampus || 'cs1')),

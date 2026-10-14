@@ -290,16 +290,16 @@ export class DrlClauseParserService {
     // Kiểm tra các từ khóa CLB / Đội / Nhóm sinh viên
     const isClub = /câu\s*lạc\s*bộ|\bclb\b|đội\s*sinh\s*viên|đội\s*ctxh|nhóm\s*sinh\s*viên|\bclub\b|\bteam\b|ban\s*học\s*tập/i.test(normalized);
 
-    if (matchedFaculty) {
+    if (isCentralUnit) {
+      faculty = 'all';
+      orgLevel = 'truong';
+    } else if (matchedFaculty) {
       faculty = matchedFaculty;
       orgLevel = isClub ? 'clb' : 'khoa';
     } else if (isClub) {
       orgLevel = 'clb';
     } else if (isFacultyLevel) {
       orgLevel = 'khoa';
-    } else if (isCentralUnit) {
-      faculty = 'all';
-      orgLevel = 'truong';
     }
 
     // --- 2. Suy luận Cơ sở tổ chức (Campus) ---
