@@ -12,6 +12,15 @@ import { join } from 'path';
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
       exclude: ['/api/(.*)', '/docs/(.*)'],
+      serveStaticOptions: {
+        setHeaders: (res, path) => {
+          if (path.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+          }
+        },
+      },
     }),
     DatabaseModule,
     EventsModule,
