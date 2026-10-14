@@ -2852,19 +2852,28 @@
     function renderEventsGrid(items) {
       const grid = document.getElementById('feedGrid');
       const countBadge = document.getElementById('eventsCountBadge');
-      if (countBadge) countBadge.innerText = `${items.length} sự kiện`;
+      if (countBadge) countBadge.innerText = `${items ? items.length : 0} sự kiện`;
 
       if (!items || items.length === 0) {
+        const isFilterActive = currentFilterClause || currentSearchQuery || currentOrgLevelFilter !== 'all' || selectedFaculties.size > 0 || currentCampusFilter !== 'all' || currentFormatFilter !== 'all' || currentFilterFavoritesOnly;
         grid.innerHTML = `
           <div class="col-span-3 text-center py-20 px-4 bg-white rounded-3xl border border-slate-200/80 shadow-luma">
             <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
-              <i class="ph-bold ph-funnel-x text-2xl"></i>
+              <i class="ph-bold ${isFilterActive ? 'ph-funnel-x' : 'ph-calendar-blank'} text-2xl"></i>
             </div>
-            <h3 class="text-base font-bold text-slate-900">Không tìm thấy sự kiện phù hợp</h3>
-            <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">Thử xóa bộ lọc tìm kiếm hoặc chọn danh mục quy chế khác để xem thêm sự kiện.</p>
-            <button onclick="resetAllFilters()" class="mt-4 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full text-xs font-semibold shadow-sm transition">
-              Đặt lại bộ lọc
-            </button>
+            <h3 class="text-base font-bold text-slate-900">${isFilterActive ? 'Không tìm thấy sự kiện phù hợp' : 'Chưa có sự kiện nào'}</h3>
+            <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+              ${isFilterActive ? 'Thử xóa bộ lọc tìm kiếm hoặc chọn danh mục quy chế khác để xem thêm sự kiện.' : 'Hãy thêm sự kiện mới từ liên kết bài viết Facebook để bắt đầu tích lũy Điểm Rèn Luyện!'}
+            </p>
+            ${isFilterActive ? `
+              <button onclick="resetAllFilters()" class="mt-4 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full text-xs font-semibold shadow-sm transition">
+                Đặt lại bộ lọc
+              </button>
+            ` : `
+              <button onclick="switchTab('share')" class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-semibold shadow-sm transition">
+                + Thêm sự kiện ngay
+              </button>
+            `}
           </div>
         `;
         return;
