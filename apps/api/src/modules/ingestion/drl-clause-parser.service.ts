@@ -28,17 +28,23 @@ export class DrlClauseParserService {
   parse(text: string): ParseResult {
     const normalized = text.toLowerCase();
 
+    const removeDiacritics = (str: string) =>
+      str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+    const unaccented = removeDiacritics(normalized);
+    const searchTarget = `${normalized} ${unaccented}`;
+
     // 0. Suy luận phân loại Đơn vị, Cấp tổ chức, Cơ sở và Hình thức theo chuẩn HCMUS trước
     // Cần metadata.orgLevel để phân biệt cuộc thi 3.1 Cấp Trường (10đ) vs Cấp Khoa (5đ)
     const preliminaryMetadata = this.inferMetadata(text);
 
     // 1. Regex bóc tách số điểm ĐRL cụ thể:
     // Loại trừ bẫy câu hỏi trắc nghiệm như "được 1 điểm cho mỗi câu", "mỗi câu trả lời đúng được 1 điểm"
-    const cleanTextForPoints = normalized
+    const cleanTextForPoints = searchTarget
       .replace(/mỗi\s*câu[^\n.,;]*?(?:được|\+)\s*\d+\s*điểm/gi, '')
-      .replace(/\d+\s*điểm\s*(?:cho\s*mỗi\s*câu|\/\s*câu)/gi, '');
+      .replace(/moi\s*cau[^\n.,;]*?(?:duoc|\+)\s*\d+\s*diem/gi, '')
+      .replace(/\d+\s*(?:điểm|diem)\s*(?:cho\s*mỗi\s*câu|cho\s*moi\s*cau|\/\s*câu|\/\s*cau)/gi, '');
 
-    const pointsRegex = /(?:cộng|\+)\s*(\d{1,2})\s*(?:điểm\s*(?:rèn\s*luyện|đrl)?|đrl\b)|(?:được\s+cộng\s*)(\d{1,2})\s*(?:điểm|đrl\b)|(\d{1,2})\s*(?:điểm\s*rèn\s*luyện|điểm\s*đrl|\s*đrl\b)/gi;
+    const pointsRegex = /(?:cộng|\+)\s*(\d{1,2})\s*(?:điểm\s*(?:rèn\s*luyện|đrl)?|đrl\b|diem\s*(?:ren\s*luyen|drl)?|drl\b)|(?:được|duoc)\s+(?:cộng|cong)\s*(\d{1,2})\s*(?:điểm|diem|đrl\b|drl\b)|(\d{1,2})\s*(?:điểm\s*rèn\s*luyện|diem\s*ren\s*luyen|điểm\s*đrl|diem\s*drl|\s*đrl\b|\s*drl\b)/gi;
     let explicitPoints: number | null = null;
     const pointsMatch = pointsRegex.exec(cleanTextForPoints);
     if (pointsMatch) {
@@ -50,11 +56,11 @@ export class DrlClauseParserService {
 
     // 2. Kiểm tra nếu bài viết chỉ định đích danh "Nội dung X" hoặc "ND X"
     let explicitClause: DrlClause | null = null;
-    if (/nội\s*dung\s*1|\bnd\s*1\b/i.test(normalized)) explicitClause = DrlClause.ND1_HOC_TAP;
-    else if (/nội\s*dung\s*2|\bnd\s*2\b/i.test(normalized)) explicitClause = DrlClause.ND2_NOI_QUY;
-    else if (/nội\s*dung\s*3|\bnd\s*3\b/i.test(normalized)) explicitClause = DrlClause.ND3_HOAT_DONG;
-    else if (/nội\s*dung\s*4|\bnd\s*4\b/i.test(normalized)) explicitClause = DrlClause.ND4_CONG_DONG;
-    else if (/nội\s*dung\s*5|\bnd\s*5\b/i.test(normalized)) explicitClause = DrlClause.ND5_KHUYEN_KHICH;
+    if (/nội\s*dung\s*1|noi\s*dung\s*1|\bnd\s*1\b/i.test(searchTarget)) explicitClause = DrlClause.ND1_HOC_TAP;
+    else if (/nội\s*dung\s*2|noi\s*dung\s*2|\bnd\s*2\b/i.test(searchTarget)) explicitClause = DrlClause.ND2_NOI_QUY;
+    else if (/nội\s*dung\s*3|noi\s*dung\s*3|\bnd\s*3\b/i.test(searchTarget)) explicitClause = DrlClause.ND3_HOAT_DONG;
+    else if (/nội\s*dung\s*4|noi\s*dung\s*4|\bnd\s*4\b/i.test(searchTarget)) explicitClause = DrlClause.ND4_CONG_DONG;
+    else if (/nội\s*dung\s*5|noi\s*dung\s*5|\bnd\s*5\b/i.test(searchTarget)) explicitClause = DrlClause.ND5_KHUYEN_KHICH;
 
     // 3. Khung phân loại chuyên biệt theo Quy định 1028/QĐ-KHTN-CTSV và thực tế hệ thống ĐRL HCMUS
     interface CandidateClause {
@@ -67,7 +73,7 @@ export class DrlClauseParserService {
     const candidates: CandidateClause[] = [];
 
     // [Mục 4.2] Hiến máu tình nguyện (+10đ)
-    if (/hiến\s*máu|giọt\s*hồng|hiến\s*máu\s*nhân\s*đạo/i.test(normalized)) {
+    if (/hiến\s*máu|hien\s*mau|giọt\s*hồng|giot\s*hong|hiến\s*máu\s*nhân\s*đạo|hien\s*mau\s*nhan\s*dao/i.test(searchTarget)) {
       candidates.push({
         clause: DrlClause.ND4_CONG_DONG,
         subClauseCode: '4.2',
@@ -78,7 +84,7 @@ export class DrlClauseParserService {
     }
 
     // [Mục 4.5] Quyên góp / Gây quỹ từ thiện tình nguyện (+3đ)
-    if (/quyên\s*góp|gây\s*quỹ|nuôi\s*heo\s*đất|tập\s*sách\s*trao\s*em|ủng\s*hộ\s*đồng\s*bào|góp\s*quỹ|quỹ\s*xuân\s*tình\s*nguyện/i.test(normalized)) {
+    if (/quyên\s*góp|quyen\s*gop|gây\s*quỹ|gay\s*quy|nuôi\s*heo\s*đất|nuoi\s*heo\s*dat|tập\s*sách\s*trao\s*em|tap\s*sach\s*trao\s*em|ủng\s*hộ\s*đồng\s*bào|ung\s*ho\s*dong\s*bao|góp\s*quỹ|gop\s*quy|quỹ\s*xuân\s*tình\s*nguyện|quy\s*xuan\s*tinh\s*nguyen/i.test(searchTarget)) {
       candidates.push({
         clause: DrlClause.ND4_CONG_DONG,
         subClauseCode: '4.5',
@@ -90,8 +96,8 @@ export class DrlClauseParserService {
 
     // [Mục 4.3] Tình nguyện vì cộng đồng / Bảo vệ môi trường (+5đ)
     // Chỉ kích hoạt nếu không phải quyên góp đơn thuần
-    if (/cleen4green|chủ\s*nhật\s*xanh|dọn\s*rác|bảo\s*vệ\s*môi\s*trường|thu\s*gom\s*pin|tình\s*nguyện\s*xanh|công\s*tác\s*xã\s*hội|chiến\s*dịch\s*tình\s*nguyện|xuân\s*tình\s*nguyện|mùa\s*hè\s*xanh|tiếp\s*sức\s*mùa\s*thi/i.test(normalized) &&
-        !/quyên\s*góp|gây\s*quỹ/i.test(normalized)) {
+    if (/cleen4green|chủ\s*nhật\s*xanh|chu\s*nhat\s*xanh|dọn\s*rác|don\s*rac|bảo\s*vệ\s*môi\s*trường|bao\s*ve\s*moi\s*truong|thu\s*gom\s*pin|tình\s*nguyện\s*xanh|tinh\s*nguyen\s*xanh|công\s*tác\s*xã\s*hội|cong\s*tac\s*xa\s*hoi|chiến\s*dịch\s*tình\s*nguyện|chien\s*dich\s*tinh\s*nguyen|xuân\s*tình\s*nguyện|xuan\s*tinh\s*nguyen|mùa\s*hè\s*xanh|mua\s*he\s*xanh|tiếp\s*sức\s*mùa\s*thi|tiep\s*suc\s*mua\s*thi/i.test(searchTarget) &&
+        !/quyên\s*góp|quyen\s*gop|gây\s*quỹ|gay\s*quy/i.test(searchTarget)) {
       candidates.push({
         clause: DrlClause.ND4_CONG_DONG,
         subClauseCode: '4.3',
@@ -102,7 +108,7 @@ export class DrlClauseParserService {
     }
 
     // [Mục 2.2] Tham gia đánh giá môn học (+5đ)
-    if (/đánh\s*giá\s*môn\s*học|đánh\s*giá\s*khóa\s*học/i.test(normalized)) {
+    if (/đánh\s*giá\s*môn\s*học|danh\s*gia\s*mon\s*hoc|đánh\s*giá\s*khóa\s*học|danh\s*gia\s*khoa\s*hoc/i.test(searchTarget)) {
       candidates.push({
         clause: DrlClause.ND2_NOI_QUY,
         subClauseCode: '2.2',
@@ -113,8 +119,8 @@ export class DrlClauseParserService {
     }
 
     // [Mục 2.3] Tham gia khảo sát, điều tra xã hội (+5đ)
-    if (/khảo\s*sát|điều\s*tra\s*xã\s*hội|phiếu\s*khảo\s*sát|lấy\s*ý\s*kiến\s*người\s*học|trải\s*nghiệm\s*học\s*tập|khảo\s*sát\s*ir3|đề\s*án\s*đổi\s*mới/i.test(normalized) &&
-        !/đánh\s*giá\s*môn\s*học/i.test(normalized)) {
+    if (/khảo\s*sát|khao\s*sat|điều\s*tra\s*xã\s*hội|dieu\s*tra\s*xa\s*hoi|phiếu\s*khảo\s*sát|phieu\s*khao\s*sat|lấy\s*ý\s*kiến\s*người\s*học|lay\s*y\s*kien\s*nguoi\s*hoc|trải\s*nghiệm\s*học\s*tập|trai\s*nghiem\s*hoc\s*tap|khảo\s*sát\s*ir3|khao\s*sat\s*ir3|đề\s*án\s*đổi\s*mới|de\s*an\s*doi\s*moi/i.test(searchTarget) &&
+        !/đánh\s*giá\s*môn\s*học|danh\s*gia\s*mon\s*hoc/i.test(searchTarget)) {
       candidates.push({
         clause: DrlClause.ND2_NOI_QUY,
         subClauseCode: '2.3',
@@ -125,8 +131,8 @@ export class DrlClauseParserService {
     }
 
     // [Mục 3.2] Thể dục thể thao / Đường chạy / Rèn luyện thể lực (+5đ)
-    if (/đường\s*chạy|uprace|chạy\s*bộ|thể\s*thao|hội\s*thao|thể\s*lực|thanh\s*niên\s*khỏe|giải\s*bóng|giải\s*cầu\s*lông|ngày\s*hội\s*thể\s*dục/i.test(normalized) &&
-        !/điện\s*tử|esport/i.test(normalized)) {
+    if (/đường\s*chạy|duong\s*chay|uprace|chạy\s*bộ|chay\s*bo|thể\s*thao|the\s*thao|hội\s*thao|hoi\s*thao|thể\s*lực|the\s*luc|thanh\s*niên\s*khỏe|thanh\s*nien\s*khoe|giải\s*bóng|giai\s*bong|giải\s*cầu\s*lông|giai\s*cau\s*long|ngày\s*hội\s*thể\s*dục|ngay\s*hoi\s*the\s*duc/i.test(searchTarget) &&
+        !/điện\s*tử|dien\s*tu|esport/i.test(searchTarget)) {
       candidates.push({
         clause: DrlClause.ND3_HOAT_DONG,
         subClauseCode: '3.2',
@@ -137,7 +143,7 @@ export class DrlClauseParserService {
     }
 
     // [Mục 3.8] Tư vấn tuyển sinh / Ngày hội việc làm (+5đ)
-    if (/tư\s*vấn\s*tuyển\s*sinh|ngày\s*hội\s*việc\s*làm|job\s*fair|ngày\s*hội\s*doanh\s*nghiệp/i.test(normalized)) {
+    if (/tư\s*vấn\s*tuyển\s*sinh|tu\s*van\s*tuyen\s*sinh|ngày\s*hội\s*việc\s*làm|ngay\s*hoi\s*viec\s*lam|job\s*fair|ngày\s*hội\s*doanh\s*nghiệp|ngay\s*hoi\s*doanh\s*nghiep/i.test(searchTarget)) {
       candidates.push({
         clause: DrlClause.ND3_HOAT_DONG,
         subClauseCode: '3.8',
@@ -149,10 +155,10 @@ export class DrlClauseParserService {
 
     // [Mục 3.1] Cuộc thi trực tuyến / Hội thi tìm hiểu chính trị, an toàn mạng, pháp luật, lịch sử
     // Cấp Trường: +10đ! Cấp Khoa: +5đ!
-    if (/cuộc\s*thi\s*trực\s*tuyến|hội\s*thi\s*trực\s*tuyến|unlock\s*the\s*rules|vinh\s*quang\s*dưới\s*cờ\s*đảng|không\s*một\s*mình|đại\s*hội\s*đảng|nghị\s*quyết|hành\s*trình\s*theo\s*chân\s*bác|tìm\s*hiểu\s*biển\s*đảo|hội\s*thi\s*tìm\s*hiểu|thi\s*tìm\s*hiểu|tìm\s*hiểu\s*pháp\s*luật/i.test(normalized)) {
+    if (/cuộc\s*thi\s*trực\s*tuyến|cuoc\s*thi\s*truc\s*tuyen|hội\s*thi\s*trực\s*tuyến|hoi\s*thi\s*truc\s*tuyen|unlock\s*the\s*rules|vinh\s*quang\s*dưới\s*cờ\s*đảng|vinh\s*quang\s*duoi\s*co\s*dang|không\s*một\s*mình|khong\s*mot\s*minh|đại\s*hội\s*đảng|dai\s*hoi\s*dang|nghị\s*quyết|nghi\s*quyet|hành\s*trình\s*theo\s*chân\s*bác|hanh\s*trinh\s*theo\s*chan\s*bac|tìm\s*hiểu\s*biển\s*đảo|tim\s*hieu\s*bien\s*dao|hội\s*thi\s*tìm\s*hiểu|hoi\s*thi\s*tim\s*hieu|thi\s*tìm\s*hiểu|thi\s*tim\s*hieu|tìm\s*hiểu\s*pháp\s*luật|tim\s*hieu\s*phap\s*luat/i.test(searchTarget)) {
       const isCentralOrSchool = preliminaryMetadata.orgLevel === 'truong' ||
-        /trường\b|phòng\s*ctsv|ctsv|đoàn\s*trường|hội\s*sinh\s*viên\s*trường|\bhsv\b|\bđtn\b/i.test(normalized) &&
-        !/đoàn\s*khoa|lch|chi\s*hội|chi\s*đoàn/i.test(normalized);
+        /trường\b|truong\b|phòng\s*ctsv|phong\s*ctsv|ctsv|đoàn\s*trường|doan\s*truong|hội\s*sinh\s*viên\s*trường|hoi\s*sinh\s*vien\s*truong|\bhsv\b|\bđtn\b|\bdtn\b/i.test(searchTarget) &&
+        !/đoàn\s*khoa|doan\s*khoa|lch|chi\s*hội|chi\s*hoi|chi\s*đoàn|chi\s*doan/i.test(searchTarget);
 
       candidates.push({
         clause: DrlClause.ND3_HOAT_DONG,
@@ -166,8 +172,8 @@ export class DrlClauseParserService {
     }
 
     // [Mục 1.8] Sinh hoạt Thư viện / CLB học thuật / PTN (+5đ)
-    if (/sinh\s*hoạt.*thư\s*viện|thuvien|thư\s*viện\s*trung\s*tâm|tập\s*huấn\s*kiến\s*thức\s*thông\s*tin/i.test(normalized) &&
-        !/hội\s*trường\s*a\s*uit/i.test(normalized)) { // Ngoại trừ chỉ mượn địa điểm hội trường
+    if (/sinh\s*hoạt.*thư\s*viện|sinh\s*hoat.*thu\s*vien|thuvien|thư\s*viện\s*trung\s*tâm|thu\s*vien\s*trung\s*tam|tập\s*huấn\s*kiến\s*thức\s*thông\s*tin|tap\s*huan\s*kien\s*thuc\s*thong\s*tin/i.test(searchTarget) &&
+        !/hội\s*trường\s*a\s*uit|hoi\s*truong\s*a\s*uit/i.test(searchTarget)) { // Ngoại trừ chỉ mượn địa điểm hội trường
       candidates.push({
         clause: DrlClause.ND1_HOC_TAP,
         subClauseCode: '1.8',
@@ -178,8 +184,8 @@ export class DrlClauseParserService {
     }
 
     // [Mục 1.5] Đề tài Nghiên cứu khoa học (+15đ)
-    if (/nghiên\s*cứu\s*khoa\s*học|\bnckh\b|đề\s*tài\s*nckh|khóa\s*luận\s*tốt\s*nghiệp/i.test(normalized) &&
-        !/hội\s*thảo|workshop|talkshow/i.test(normalized)) {
+    if (/nghiên\s*cứu\s*khoa\s*học|nghien\s*cuu\s*khoa\s*hoc|\bnckh\b|đề\s*tài\s*nckh|de\s*tai\s*nckh|khóa\s*luận\s*tốt\s*nghiệp|khoa\s*luan\s*tot\s*nghiep/i.test(searchTarget) &&
+        !/hội\s*thảo|hoi\s*thao|workshop|talkshow/i.test(searchTarget)) {
       candidates.push({
         clause: DrlClause.ND1_HOC_TAP,
         subClauseCode: '1.5',
@@ -190,8 +196,8 @@ export class DrlClauseParserService {
     }
 
     // [Mục 1.9 & 1.6] Tech Talk / Workshop Công nghệ / Cuộc thi học thuật / Ôn thi môn học (+5đ)
-    if (/tech\s*talk|system\s*design|\bdsa\b|ai\s*thực\s*chiến|g-sparks|ôn\s*thi|học\s*thuật|hackathon|thách\s*thức|seminar\s*học\s*thuật|clb\s*học\s*thuật|phòng\s*thí\s*nghiệm|\bptn\b/i.test(normalized)) {
-      const isAcademicContest = /cuộc\s*thi\s*học\s*thuật|hackathon|thách\s*thức/i.test(normalized);
+    if (/tech\s*talk|system\s*design|\bdsa\b|ai\s*thực\s*chiến|ai\s*thuc\s*chien|g-sparks|ôn\s*thi|on\s*thi|học\s*thuật|hoc\s*thuat|hackathon|thách\s*thức|thach\s*thuc|seminar\s*học\s*thuật|seminar\s*hoc\s*thuat|clb\s*học\s*thuật|clb\s*hoc\s*thuat|phòng\s*thí\s*nghiệm|phong\s*thi\s*nghiem|\bptn\b/i.test(searchTarget)) {
+      const isAcademicContest = /cuộc\s*thi\s*học\s*thuật|cuoc\s*thi\s*hoc\s*thuat|hackathon|thách\s*thức|thach\s*thuc/i.test(searchTarget);
       candidates.push({
         clause: DrlClause.ND1_HOC_TAP,
         subClauseCode: isAcademicContest ? '1.6' : '1.9',
@@ -205,7 +211,7 @@ export class DrlClauseParserService {
 
     // [Mục 3.5] Hoạt động văn hóa / Talkshow kỹ năng mềm / Chuyên đề xã hội / Tham quan bảo tàng (+5đ)
     // Bao gồm các case thực tế: Sa mạc nở hoa, DEBUG YOUR EYES, Nhìn ra thế giới, US nhập ngũ, 20-11, Bảo tàng, LUNIX...
-    if (/talkshow|workshop|tọa\s*đàm|chuyên\s*đề|bảo\s*tàng|tham\s*quan|kỹ\s*năng\s*mềm|hạt\s*giống\s*đỏ|sa\s*mạc\s*nở\s*hoa|debug\s*your\s*eyes|nhìn\s*ra\s*thế\s*giới|us\s*nhập\s*ngũ|chào\s*mừng\s*ngày\s*nhà\s*giáo|20-11|together\s*asean|an\s*toàn\s*giao\s*thông|tâm\s*lý|giao\s*lưu|văn\s*hóa|văn\s*nghệ|lunix|thể\s*thao\s*điện\s*tử/i.test(normalized)) {
+    if (/talkshow|workshop|tọa\s*đàm|toa\s*dam|chuyên\s*đề|chuyen\s*de|bảo\s*tàng|bao\s*tang|tham\s*quan|kỹ\s*năng\s*mềm|ky\s*nang\s*mem|hạt\s*giống\s*đỏ|hat\s*giong\s*do|sa\s*mạc\s*nở\s*hoa|sa\s*mac\s*no\s*hoa|debug\s*your\s*eyes|nhìn\s*ra\s*thế\s*giới|nhin\s*ra\s*the\s*gioi|us\s*nhập\s*ngũ|us\s*nhap\s*ngu|chào\s*mừng\s*ngày\s*nhà\s*giáo|chao\s*mung\s*ngay\s*nha\s*giao|20-11|together\s*asean|an\s*toàn\s*giao\s*thông|an\s*toan\s*giao\s*thong|tâm\s*lý|tam\s*ly|giao\s*lưu|giao\s*luu|văn\s*hóa|van\s*hoa|văn\s*nghệ|van\s*nghe|lunix|thể\s*thao\s*điện\s*tử|the\s*thao\s*dien\s*tu/i.test(searchTarget)) {
       candidates.push({
         clause: DrlClause.ND3_HOAT_DONG,
         subClauseCode: '3.5',
@@ -216,7 +222,7 @@ export class DrlClauseParserService {
     }
 
     // [Nội dung 5] Khuyến khích: Bài báo khoa học, Olympic, Khen thưởng
-    if (/bài\s*báo.*quốc\s*tế|hội\s*nghị\s*quốc\s*tế/i.test(normalized)) {
+    if (/bài\s*báo.*quốc\s*tế|bai\s*bao.*quoc\s*te|hội\s*nghị\s*quốc\s*tế|hoi\s*nghi\s*quoc\s*te/i.test(searchTarget)) {
       candidates.push({
         clause: DrlClause.ND5_KHUYEN_KHICH,
         subClauseCode: '5.4',
@@ -224,7 +230,7 @@ export class DrlClauseParserService {
         defaultPoints: 25,
         weight: 99,
       });
-    } else if (/olympic|cấp\s*thành/i.test(normalized)) {
+    } else if (/olympic|cấp\s*thành|cap\s*thanh/i.test(searchTarget)) {
       candidates.push({
         clause: DrlClause.ND5_KHUYEN_KHICH,
         subClauseCode: '5.3',
@@ -232,7 +238,7 @@ export class DrlClauseParserService {
         defaultPoints: 15,
         weight: 95,
       });
-    } else if (/đạt\s*giải|giải\s*thưởng|khen\s*thưởng/i.test(normalized)) {
+    } else if (/đạt\s*giải|dat\s*giai|giải\s*thưởng|giai\s*thuong|khen\s*thưởng|khen\s*thuong/i.test(searchTarget)) {
       candidates.push({
         clause: DrlClause.ND5_KHUYEN_KHICH,
         subClauseCode: '5.2',
