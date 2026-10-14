@@ -27,6 +27,15 @@ export class IngestionController {
 
     // Nếu bài viết bị Facebook chặn triệt để bằng Login Wall và người dùng chưa cung cấp nội dung thủ công
     if (meta.isBlockedByLoginWall && !body.content) {
+      const rawImgs = (meta.posterImages && meta.posterImages.length > 0)
+        ? meta.posterImages
+        : (meta.posterImageUrl ? [meta.posterImageUrl] : []);
+      const proxiedImages = rawImgs.map(img => {
+        if (img.includes('lookaside.fbsbx.com') || img.includes('fbsbx.com') || img.includes('fbcdn.net') || img.includes('facebook.com')) {
+          return `/api/v1/events/proxy-image?url=${encodeURIComponent(img)}&v=2`;
+        }
+        return img;
+      });
       return {
         originalUrl,
         cleanUrl,
@@ -34,8 +43,8 @@ export class IngestionController {
         title: meta.title,
         description: meta.description,
         isBlockedByLoginWall: true,
-        posterImageUrl: undefined,
-        posterImages: [],
+        posterImageUrl: proxiedImages[0] || undefined,
+        posterImages: proxiedImages,
         suggestedClauses: [],
         suggestedDeadline: undefined,
         debateSummary: 'Facebook yêu cầu đăng nhập để xem bài viết này. Hệ thống không thể tự động trích xuất nội dung từ liên kết bị giới hạn đối tượng hoặc yêu cầu phiên đăng nhập.',
@@ -90,7 +99,7 @@ export class IngestionController {
     const finalRawImages = rawImages.slice(0, 4);
     const proxiedImages = finalRawImages.map(img => {
       if (img.includes('lookaside.fbsbx.com') || img.includes('fbsbx.com') || img.includes('fbcdn.net') || img.includes('facebook.com')) {
-        return `/api/v1/events/proxy-image?url=${encodeURIComponent(img)}`;
+        return `/api/v1/events/proxy-image?url=${encodeURIComponent(img)}&v=2`;
       }
       return img;
     });

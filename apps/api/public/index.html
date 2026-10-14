@@ -1435,7 +1435,7 @@
     function safeImageUrl(url) {
       if (!url) return '';
       if ((url.includes('lookaside.fbsbx.com') || url.includes('fbsbx.com') || url.includes('fbcdn.net') || url.includes('facebook.com')) && !url.includes('/api/v1/events/proxy-image')) {
-        return `/api/v1/events/proxy-image?url=${encodeURIComponent(url)}`;
+        return `/api/v1/events/proxy-image?url=${encodeURIComponent(url)}&v=2`;
       }
       return url;
     }
@@ -1443,13 +1443,11 @@
     function handleImageError(imgEl) {
       if (!imgEl || imgEl.dataset.fallbackApplied) return;
       imgEl.dataset.fallbackApplied = 'true';
-      const fallbackImages = [
-        'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800',
-        'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800',
-        'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800',
-        'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800'
-      ];
-      imgEl.src = fallbackImages[Math.floor(Math.random() * fallbackImages.length)];
+      if (imgEl.src && !imgEl.src.includes('/api/v1/events/proxy-image') && (imgEl.src.includes('facebook.com') || imgEl.src.includes('fbcdn.net') || imgEl.src.includes('fbsbx.com'))) {
+        imgEl.src = `/api/v1/events/proxy-image?url=${encodeURIComponent(imgEl.src)}&v=2`;
+        return;
+      }
+      imgEl.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450"><rect width="800" height="450" fill="%231e3a8a"/><circle cx="400" cy="180" r="60" fill="%233b82f6" opacity="0.3"/><path d="M400 140 L440 165 L400 190 L360 165 Z" fill="%23ffffff"/><path d="M375 175 L375 205 C375 215 425 215 425 205 L425 175" fill="none" stroke="%23ffffff" stroke-width="4"/><text x="400" y="270" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="%23ffffff">HÌNH ẢNH SỰ KIỆN TỪ FACEBOOK</text><text x="400" y="305" text-anchor="middle" font-family="sans-serif" font-size="14" fill="%2393c5fd">Trường ĐH Khoa học Tự nhiên, ĐHQG-HCM</text></svg>';
     }
 
     // ==================== INSTAGRAM-STYLE MULTI-IMAGE CAROUSEL ====================

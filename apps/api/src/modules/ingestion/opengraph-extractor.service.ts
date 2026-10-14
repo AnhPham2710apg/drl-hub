@@ -488,15 +488,23 @@ export class OpenGraphExtractorService {
         }
       }
 
+      // Quét thêm ảnh từ fbid trên URL chính hoặc effectiveUrl nếu chưa có
+      const anyFbidMatch = url.match(/fbid=(\d+)/) || (effectiveUrl && effectiveUrl.match(/fbid=(\d+)/));
+      if (anyFbidMatch && anyFbidMatch[1]) {
+        const fbidUrl = `https://lookaside.fbsbx.com/lookaside/crawler/media/?media_id=${anyFbidMatch[1]}`;
+        if (!extractedImageUrls.includes(fbidUrl)) extractedImageUrls.unshift(fbidUrl);
+      }
+
       // Kiểm tra nếu nội dung cuối cùng bị Facebook khóa bằng login wall
       const loginWallDetected = !googlebotContent && this.isFacebookLoginWall(rawContent) && this.isFacebookLoginWall(description);
       if (loginWallDetected) {
+        const finalPosterImages = extractedImageUrls.slice(0, 4);
         return {
           title: 'Bài viết yêu cầu đăng nhập Facebook',
           description: 'Facebook yêu cầu đăng nhập để xem bài viết này (bài viết riêng tư hoặc cần tài khoản). Vui lòng sử dụng tính năng "Dán trực tiếp nội dung bài viết" ở trên để AI phân tích và xếp loại ĐRL ngay lập tức!',
           isBlockedByLoginWall: true,
-          posterImageUrl: undefined,
-          posterImages: [],
+          posterImageUrl: finalPosterImages[0] || undefined,
+          posterImages: finalPosterImages,
           canonicalUrl: targetCanonicalUrl || effectiveUrl || undefined,
         };
       }
