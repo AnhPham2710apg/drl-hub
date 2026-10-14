@@ -2848,6 +2848,21 @@
       renderEventsGrid(filtered);
     }
 
+    function isAnyFilterActive() {
+      const searchVal = (document.getElementById('eventSearchInput')?.value || '').trim();
+      return Boolean(
+        searchVal ||
+        isFilterFavoritesOnly ||
+        (typeof selectedClauses !== 'undefined' && selectedClauses.length > 0) ||
+        (typeof selectedFaculties !== 'undefined' && selectedFaculties.length > 0) ||
+        (typeof selectedOrgLevels !== 'undefined' && selectedOrgLevels.length > 0) ||
+        (typeof selectedPoints !== 'undefined' && selectedPoints.length > 0) ||
+        (typeof selectedFormats !== 'undefined' && selectedFormats.length > 0) ||
+        (typeof selectedCampuses !== 'undefined' && selectedCampuses.length > 0) ||
+        (typeof selectedClubTypes !== 'undefined' && selectedClubTypes.length > 0)
+      );
+    }
+
     // Render Events Grid
     function renderEventsGrid(items) {
       const grid = document.getElementById('feedGrid');
@@ -2855,17 +2870,17 @@
       if (countBadge) countBadge.innerText = `${items ? items.length : 0} sự kiện`;
 
       if (!items || items.length === 0) {
-        const isFilterActive = currentFilterClause || currentSearchQuery || currentOrgLevelFilter !== 'all' || selectedFaculties.size > 0 || currentCampusFilter !== 'all' || currentFormatFilter !== 'all' || currentFilterFavoritesOnly;
+        const hasActiveFilter = isAnyFilterActive();
         grid.innerHTML = `
           <div class="col-span-3 text-center py-20 px-4 bg-white rounded-3xl border border-slate-200/80 shadow-luma">
             <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
-              <i class="ph-bold ${isFilterActive ? 'ph-funnel-x' : 'ph-calendar-blank'} text-2xl"></i>
+              <i class="ph-bold ${hasActiveFilter ? 'ph-funnel-x' : 'ph-calendar-blank'} text-2xl"></i>
             </div>
-            <h3 class="text-base font-bold text-slate-900">${isFilterActive ? 'Không tìm thấy sự kiện phù hợp' : 'Chưa có sự kiện nào'}</h3>
+            <h3 class="text-base font-bold text-slate-900">${hasActiveFilter ? 'Không tìm thấy sự kiện phù hợp' : 'Chưa có sự kiện nào'}</h3>
             <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              ${isFilterActive ? 'Thử xóa bộ lọc tìm kiếm hoặc chọn danh mục quy chế khác để xem thêm sự kiện.' : 'Hãy thêm sự kiện mới từ liên kết bài viết Facebook để bắt đầu tích lũy Điểm Rèn Luyện!'}
+              ${hasActiveFilter ? 'Thử xóa bộ lọc tìm kiếm hoặc chọn danh mục quy chế khác để xem thêm sự kiện.' : 'Hãy thêm sự kiện mới từ liên kết bài viết Facebook để bắt đầu tích lũy Điểm Rèn Luyện!'}
             </p>
-            ${isFilterActive ? `
+            ${hasActiveFilter ? `
               <button onclick="resetAllFilters()" class="mt-4 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full text-xs font-semibold shadow-sm transition">
                 Đặt lại bộ lọc
               </button>
@@ -3002,10 +3017,12 @@
 
       try {
         const res = await fetch('/api/v1/events');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        allFetchedEvents = data.items || [];
+        allFetchedEvents = Array.isArray(data.items) ? data.items : [];
         applyFilters();
       } catch (err) {
+        console.error('Failed to load events feed:', err);
         grid.innerHTML = '<div class="col-span-3 text-center py-12 text-rose-500">Lỗi tải danh mục sự kiện</div>';
       }
     }
